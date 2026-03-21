@@ -170,6 +170,10 @@ def init(ContextInfo):
 
 def handlebar(ContextInfo):
     """Called on every bar (1-minute period)."""
+    # do_back_test is True in backtest mode - no live quotes available, skip
+    if getattr(ContextInfo, "do_back_test", False):
+        return
+
     now_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
     rows = []
