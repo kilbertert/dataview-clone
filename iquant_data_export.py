@@ -103,14 +103,12 @@ def _safe_float(val, default=0.0):
 
 
 def _calc_ma(prices, period):
-    """Simple moving average. prices list newest-last. Returns latest MA value."""
     if len(prices) < period:
         return None
     return sum(prices[-period:]) / period
 
 
 def _calc_percent_above_ma(close_list, ma_val):
-    """Fraction of close_list values above ma_val."""
     if not ma_val or not close_list:
         return 0.0
     above = sum(1 for c in close_list if c > ma_val)
@@ -118,7 +116,6 @@ def _calc_percent_above_ma(close_list, ma_val):
 
 
 def _total_score(row):
-    """Score 0-4 based on how many MA conditions are met."""
     return sum([
         int(row["greater_m5"]),
         int(row["greater_m10"]),
@@ -128,7 +125,6 @@ def _total_score(row):
 
 
 def _purge_old_records(conn, days):
-    """Delete timeseries rows older than retention_days."""
     cutoff = time.strftime(
         "%Y-%m-%d %H:%M:%S",
         time.localtime(time.time() - days * 86400)
@@ -136,10 +132,7 @@ def _purge_old_records(conn, days):
     conn.execute("DELETE FROM timeseries WHERE create_time < ?", (cutoff,))
 
 
-# ── iQuant strategy entry points ──────────────────────────────────────────────
-
 def init(ContextInfo):
-    """Strategy init: set universe and create DB tables."""
     codes = ["{0}.{1}".format(code, mkt) for code, mkt, _, _ in UNIVERSE]
     ContextInfo.set_universe(codes)
     _ensure_db(DB_PATH)
@@ -149,7 +142,6 @@ def init(ContextInfo):
 
 
 def handlebar(ContextInfo):
-    """Called on every bar (1-minute period)."""
     # do_back_test is True in backtest mode - no live quotes available, skip
     if getattr(ContextInfo, "do_back_test", False):
         return
