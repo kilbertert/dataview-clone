@@ -146,18 +146,14 @@ const PORT = 8000;
 // ─── Mock Data ──────────────────────────────────────────────────────────────
 
 const ETF_LIST = [
-  { etfCode: "510300", etfName: "沪深300ETF", industry: "宽基指数" },
-  { etfCode: "510500", etfName: "中证500ETF", industry: "宽基指数" },
-  { etfCode: "159915", etfName: "创业板ETF", industry: "创业板" },
-  { etfCode: "512880", etfName: "证券ETF", industry: "金融" },
-  { etfCode: "512690", etfName: "酒ETF", industry: "消费" },
-  { etfCode: "515080", etfName: "新能源ETF", industry: "新能源" },
-  { etfCode: "512760", etfName: "芯片ETF", industry: "科技" },
-  { etfCode: "159601", etfName: "医药ETF", industry: "医疗健康" },
-  { etfCode: "515030", etfName: "新能源车ETF", industry: "新能源" },
-  { etfCode: "512480", etfName: "半导体ETF", industry: "科技" },
-  { etfCode: "159740", etfName: "军工ETF", industry: "军工" },
-  { etfCode: "512000", etfName: "券商ETF", industry: "金融" },
+  { etfCode: "300364", etfName: "中文在线",  industry: "512980-传媒ETF" },
+  { etfCode: "600986", etfName: "浙文互联",  industry: "512980-传媒ETF" },
+  { etfCode: "000156", etfName: "华数传媒",  industry: "512980-传媒ETF" },
+  { etfCode: "600977", etfName: "中国电影",  industry: "516620-影视ETF" },
+  { etfCode: "300133", etfName: "华策影视",  industry: "516620-影视ETF" },
+  { etfCode: "002195", etfName: "岩山科技",  industry: "515070-人工智能ETF" },
+  { etfCode: "600633", etfName: "浙数文化",  industry: "159869-游戏ETF" },
+  { etfCode: "002436", etfName: "兴森科技",  industry: "512760-芯片ETF" },
 ];
 
 function randomFloat(min, max, decimals = 4) {

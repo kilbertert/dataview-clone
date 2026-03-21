@@ -5,20 +5,22 @@ import time
 # SQLite file path (absolute). Must match DB_PATH in server.js.
 DB_PATH = r"C:\Users\Public\dataview\market_data.db"
 
-# ETF universe: (code, market, name, industry) - edit UNIVERSE to add/remove symbols
+# Individual stock universe: (code, market, name, industry/parent-etf)
+# industry field encodes the parent ETF code for grouping in the dashboard
 UNIVERSE = [
-    ("510300", "SH", "CSI300ETF",       "broad-index"),
-    ("510500", "SH", "CSI500ETF",       "broad-index"),
-    ("159915", "SZ", "ChiNextETF",      "chinext"),
-    ("512880", "SH", "SecuritiesETF",   "finance"),
-    ("512690", "SH", "LiquorETF",       "consumer"),
-    ("515080", "SH", "NewEnergyETF",    "new-energy"),
-    ("512760", "SH", "ChipETF",         "tech"),
-    ("159601", "SZ", "PharmaETF",       "healthcare"),
-    ("515030", "SH", "NEVehicleETF",    "new-energy"),
-    ("512480", "SH", "SemiETF",         "tech"),
-    ("159740", "SZ", "DefenseETF",      "defense"),
-    ("512000", "SH", "BrokerETF",       "finance"),
+    # 512980 传媒ETF
+    ("300364", "SZ", "中文在线",   "512980-传媒ETF"),
+    ("600986", "SH", "浙文互联",   "512980-传媒ETF"),
+    ("000156", "SZ", "华数传媒",   "512980-传媒ETF"),
+    # 516620 影视ETF
+    ("600977", "SH", "中国电影",   "516620-影视ETF"),
+    ("300133", "SZ", "华策影视",   "516620-影视ETF"),
+    # 515070 人工智能ETF
+    ("002195", "SZ", "岩山科技",   "515070-人工智能ETF"),
+    # 159869 游戏ETF
+    ("600633", "SH", "浙数文化",   "159869-游戏ETF"),
+    # 512760 芯片ETF
+    ("002436", "SZ", "兴森科技",   "512760-芯片ETF"),
 ]
 
 # MA periods
