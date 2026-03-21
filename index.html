@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>指数数据监控面板</title>
+    <link rel="stylesheet" href="css/main.css?v=1.0.0" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>📊 指数数据监控面板</h1>
+        <div class="header-info">
+          <div class="info-badge">
+            <span class="network-status online" id="networkStatus"></span>
+            <span id="lastUpdate">加载中...</span>
+          </div>
+          <div class="info-badge">数据条数: <span id="dataCount">0</span></div>
+          <a href="stockTimeseries.html" class="price-button">📈 时间序列</a>
+        </div>
+      </div>
+
+      <div class="stats-grid" id="statsGrid">
+        <!-- 统计信息将在这里动态生成 -->
+      </div>
+
+      <div class="table-container">
+        <div id="loadingDiv" class="loading">正在加载数据...</div>
+        <div id="errorDiv" class="error" style="display: none"></div>
+        <table id="dataTable" style="display: none">
+          <thead>
+            <tr>
+              <th class="sortable" data-column="createTime" data-type="string">更新时间</th>
+              <th class="sortable" data-column="etfCode" data-type="string">代码</th>
+              <th class="sortable" data-column="industry" data-type="string">所属行业</th>
+              <th class="sortable" data-column="etfName" data-type="string">名称</th>
+              <th class="sortable" data-column="totalScore" data-type="number">总分</th>
+              <th class="sortable" data-column="buySellSignal" data-type="string">买卖信号</th>
+              <th class="sortable" data-column="greaterThanM5Price" data-type="boolean">5日</th>
+              <th class="sortable" data-column="greaterThanM10Price" data-type="boolean">10日</th>
+              <th class="sortable" data-column="greaterThanM20Price" data-type="boolean">20日</th>
+              <th class="sortable" data-column="m0Percent" data-type="percent">M0占比</th>
+              <th class="sortable" data-column="m5Percent" data-type="percent">M5占比</th>
+              <th class="sortable" data-column="m10Percent" data-type="percent">M10占比</th>
+              <th class="sortable" data-column="m20Percent" data-type="percent">M20占比</th>
+              <th class="sortable" data-column="maMeanRatio" data-type="percent">Ma均值</th>
+              <th class="sortable" data-column="growthStockCount" data-type="number">增长股数</th>
+              <th class="sortable" data-column="totalStockCount" data-type="number">总股数</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div id="noDataDiv" class="no-data" style="display: none">暂无数据</div>
+      </div>
+    </div>
+
+    <script src="js/config.js?v=1.0.0"></script>
+    <script src="js/common/formatter.js?v=1.0.0"></script>
+    <script src="js/app.js?v=1.0.1"></script>
+  </body>
+</html>
