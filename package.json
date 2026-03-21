@@ -1,0 +1,12 @@
+{
+  "name": "dataview-clone",
+  "version": "1.0.0",
+  "description": "指数数据监控面板 — ETF/Stock Index Monitoring Dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3"
+  }
+}

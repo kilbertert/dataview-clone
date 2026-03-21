@@ -21,6 +21,126 @@ try { Database = require("better-sqlite3"); } catch (_) {}
 // Path must match DB_PATH in iquant_data_export.py
 const DB_PATH = process.env.DB_PATH || "C:\\Users\\Public\\dataview\\market_data.db";
 
+// ─── SQLite Readers ───────────────────────────────────────────────────────────
+
+function dbAvailable() {
+  if (!Database) return false;
+  try {
+    const db = new Database(DB_PATH, { readonly: true, fileMustExist: true });
+    db.close();
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+function getAllDataFromDb() {
+  const db = new Database(DB_PATH, { readonly: true, fileMustExist: true });
+  try {
+    const rows = db.prepare("SELECT * FROM latest_snapshot ORDER BY etf_code").all();
+    if (!rows.length) return null;
+
+    const now = rows[0].create_time;
+    const growthCount = rows.filter(r => r.greater_m5).length;
+    const m5Avg  = rows.reduce((s, r) => s + r.m5_percent,  0) / rows.length;
+    const m10Avg = rows.reduce((s, r) => s + r.m10_percent, 0) / rows.length;
+    const m20Avg = rows.reduce((s, r) => s + r.m20_percent, 0) / rows.length;
+    const maAvg  = rows.reduce((s, r) => s + r.ma_mean_ratio, 0) / rows.length;
+
+    return {
+      dataStatistics: {
+        lastUpdateTime: now,
+        marketTrend: growthCount > rows.length / 2 ? "BUY" : "SELL",
+        m5Percent:      parseFloat(m5Avg.toFixed(4)),
+        m10Percent:     parseFloat(m10Avg.toFixed(4)),
+        m20Percent:     parseFloat(m20Avg.toFixed(4)),
+        maMeanPercent:  parseFloat(maAvg.toFixed(4)),
+        growthStockCount: growthCount,
+        totalStockCount:  rows.length,
+      },
+      stockDataList: rows.map(r => ({
+        etfCode:           r.etf_code,
+        etfName:           r.etf_name,
+        industry:          r.industry,
+        totalScore:        r.total_score,
+        createTime:        r.create_time,
+        greaterThanM5Price:  !!r.greater_m5,
+        greaterThanM10Price: !!r.greater_m10,
+        greaterThanM20Price: !!r.greater_m20,
+        greaterThanM0Price:  !!r.greater_m0,
+        holdStatus:        !!r.hold_status,
+        m0Percent:         r.m0_percent,
+        m5Percent:         r.m5_percent,
+        m10Percent:        r.m10_percent,
+        m20Percent:        r.m20_percent,
+        maMeanRatio:       r.ma_mean_ratio,
+        growthStockCount:  r.growth_stock_count,
+        totalStockCount:   r.total_stock_count,
+      })),
+    };
+  } finally {
+    db.close();
+  }
+}
+
+function getTimeSeriesDataFromDb(startTimeStr, endTimeStr, page, size) {
+  const db = new Database(DB_PATH, { readonly: true, fileMustExist: true });
+  try {
+    const start = startTimeStr || new Date(Date.now() - 7 * 86400000).toISOString().replace("T", " ").slice(0, 19);
+    const end   = endTimeStr   || new Date().toISOString().replace("T", " ").slice(0, 19);
+
+    // Distinct time points in range
+    const timePoints = db.prepare(
+      "SELECT DISTINCT create_time FROM timeseries WHERE create_time BETWEEN ? AND ? ORDER BY create_time"
+    ).all(start, end).map(r => r.create_time);
+
+    // Distinct products (paginated)
+    const allProducts = db.prepare(
+      "SELECT DISTINCT etf_code, etf_name, industry FROM timeseries ORDER BY etf_code"
+    ).all();
+    const total      = allProducts.length;
+    const totalPages = Math.ceil(total / size) || 1;
+    const safePage   = Math.max(1, Math.min(page, totalPages));
+    const products   = allProducts.slice((safePage - 1) * size, safePage * size);
+    const codes      = products.map(p => p.etf_code);
+
+    const records = codes.length && timePoints.length
+      ? db.prepare(
+          `SELECT * FROM timeseries
+           WHERE etf_code IN (${codes.map(() => "?").join(",")})
+             AND create_time BETWEEN ? AND ?
+           ORDER BY etf_code, create_time`
+        ).all(...codes, start, end).map(r => ({
+          etfCode:           r.etf_code,
+          etfName:           r.etf_name,
+          industry:          r.industry,
+          totalScore:        r.total_score,
+          createTime:        r.create_time,
+          greaterThanM5Price:  !!r.greater_m5,
+          greaterThanM10Price: !!r.greater_m10,
+          greaterThanM20Price: !!r.greater_m20,
+          greaterThanM0Price:  !!r.greater_m0,
+          holdStatus:        !!r.hold_status,
+          m0Percent:         r.m0_percent,
+          m5Percent:         r.m5_percent,
+          m10Percent:        r.m10_percent,
+          m20Percent:        r.m20_percent,
+          maMeanRatio:       r.ma_mean_ratio,
+          growthStockCount:  r.growth_stock_count,
+          totalStockCount:   r.total_stock_count,
+        }))
+      : [];
+
+    return {
+      data: { timePoints, products, records },
+      pagination: { page: safePage, size, total, totalPages },
+      lastUpdateTime: formatDateTime(new Date()),
+    };
+  } finally {
+    db.close();
+  }
+}
+
 const PORT = 8000;
 
 // ─── Mock Data ──────────────────────────────────────────────────────────────
@@ -153,6 +273,20 @@ function generateTimeSeriesData(startTimeStr, endTimeStr, page, size) {
   };
 }
 
+function getAllData() {
+  if (dbAvailable()) {
+    try { const r = getAllDataFromDb(); if (r) return r; } catch (_) {}
+  }
+  return generateAllData();
+}
+
+function getTimeSeriesData(startTime, endTime, page, size) {
+  if (dbAvailable()) {
+    try { const r = getTimeSeriesDataFromDb(startTime, endTime, page, size); if (r) return r; } catch (_) {}
+  }
+  return generateTimeSeriesData(startTime, endTime, page, size);
+}
+
 // ─── Mime Types ──────────────────────────────────────────────────────────────
 
 const MIME = {
@@ -185,9 +319,13 @@ const server = http.createServer((req, res) => {
 
   // ── API routes ──────────────────────────────────────────────────────────
   if (pathname === "/api/dataApi/getAllData") {
-    const body = JSON.stringify({ data: generateAllData() });
+    let result;
+    if (dbAvailable()) {
+      try { result = getAllDataFromDb(); } catch (_) {}
+    }
+    if (!result) result = generateAllData();
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(body);
+    res.end(JSON.stringify({ data: result }));
     return;
   }
 
@@ -195,9 +333,13 @@ const server = http.createServer((req, res) => {
     const { startTime, endTime } = parsed.query;
     const page = parseInt(parsed.query.page) || 1;
     const size = parseInt(parsed.query.size) || 10;
-    const body = JSON.stringify(generateTimeSeriesData(startTime, endTime, page, size));
+    let result;
+    if (dbAvailable()) {
+      try { result = getTimeSeriesDataFromDb(startTime, endTime, page, size); } catch (_) {}
+    }
+    if (!result) result = generateTimeSeriesData(startTime, endTime, page, size);
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(body);
+    res.end(JSON.stringify(result));
     return;
   }
 
@@ -220,7 +362,9 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`\n🚀 Mock server running at http://localhost:${PORT}`);
+  const usingDb = dbAvailable();
+  console.log(`\n🚀 Server running at http://localhost:${PORT}`);
+  console.log(`   Data source    : ${usingDb ? "SQLite (" + DB_PATH + ")" : "mock data (iQuant DB not found)"}`);
   console.log(`   Main dashboard : http://localhost:${PORT}/`);
   console.log(`   Time series    : http://localhost:${PORT}/stockTimeseries.html`);
   console.log(`   API getAllData  : http://localhost:${PORT}/api/dataApi/getAllData`);

@@ -10,7 +10,7 @@ ETF/Stock Index Monitoring Dashboard — a clone of the dataview monitoring app.
 ## Stack
 
 - Pure vanilla HTML + CSS + JavaScript (no framework)
-- Node.js mock backend (no external dependencies)
+- Node.js backend — reads from iQuant SQLite DB, falls back to mock data
 
 ## Project Structure
 
@@ -26,25 +26,39 @@ dataview-clone/
 │   │   └── formatter.js    # Shared formatting utilities
 │   ├── app.js              # Main dashboard logic
 │   └── stockTimeseries.js  # Time-series page logic
-├── server.js               # Mock backend server
+├── server.js               # Backend server (SQLite + mock fallback)
+├── iquant_data_export.py   # iQuant strategy: writes real-time data to SQLite
 └── README.md
 ```
 
-## Quick Start
+## Quick Start (mock data)
 
-**Requirements:** Node.js (any version ≥ 12)
+**Requirements:** Node.js ≥ 12
 
 ```bash
-# Start the mock server
 node server.js
 ```
 
-Then open your browser at:
+Open http://localhost:8000 — runs on mock data until SQLite DB is present.
 
-- Main dashboard: http://localhost:8000/
-- Time-series: http://localhost:8000/stockTimeseries.html
+## Real Data via iQuant
 
-## API Endpoints (Mock)
+1. Open iQuant client → Strategy Editor → New Python Strategy
+2. Paste the contents of `iquant_data_export.py`, set period to 1 minute, run in live mode
+3. Install the SQLite driver for Node.js:
+   ```bash
+   npm install better-sqlite3
+   ```
+4. Start the server (DB path defaults to `C:\Users\Public\dataview\market_data.db`):
+   ```bash
+   node server.js
+   # or with a custom path:
+   DB_PATH="C:\your\path\market_data.db" node server.js
+   ```
+
+The server auto-detects the DB. If it exists and has data, real iQuant data is served; otherwise mock data is used transparently.
+
+## API Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -59,7 +73,3 @@ Then open your browser at:
 | `endTime` | `string` | End datetime (`yyyy-MM-dd HH:mm:ss`) |
 | `page` | `number` | Page number (default: 1) |
 | `size` | `number` | Page size (default: 10) |
-
-## Deploying with a Real Backend
-
-Update `js/config.js` to point to your production API URL, or deploy behind an Nginx proxy that routes `/api` to your backend service.
