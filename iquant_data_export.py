@@ -1,29 +1,11 @@
-# coding: utf-8
-"""
-iQuant market data export strategy - runs as background daemon.
-
-Writes ETF/index market data to a local SQLite database on every 1-minute bar.
-The Node.js backend reads from SQLite instead of using mock data.
-
-Usage:
-  1. Open iQuant client, create a new Python strategy in the strategy editor.
-  2. Paste the contents of this file.
-  3. Set period to 1 minute, mode to live trading.
-  4. Click Run - the strategy runs in the background and writes data every minute.
-
-DB path: DB_PATH (default below, must match server.js DB_PATH)
-"""
-
 import sqlite3
 import os
 import time
 
-# ── Config ────────────────────────────────────────────────────────────────────
-
 # SQLite file path (absolute). Must match DB_PATH in server.js.
 DB_PATH = r"C:\Users\Public\dataview\market_data.db"
 
-# ETF universe: (code, market, name, industry)
+# ETF universe: (code, market, name, industry) - edit UNIVERSE to add/remove symbols
 UNIVERSE = [
     ("510300", "SH", "CSI300ETF",       "broad-index"),
     ("510500", "SH", "CSI500ETF",       "broad-index"),
@@ -45,10 +27,7 @@ MA_PERIODS = [5, 10, 20]
 # Days of timeseries history to retain
 RETENTION_DAYS = 30
 
-# ── DB init ───────────────────────────────────────────────────────────────────
-
 def _ensure_db(db_path):
-    """Create tables if they don't exist (idempotent)."""
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
@@ -116,8 +95,6 @@ def _ensure_db(db_path):
     conn.close()
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
 def _safe_float(val, default=0.0):
     try:
         return float(val)
@@ -166,6 +143,9 @@ def init(ContextInfo):
     codes = ["{0}.{1}".format(code, mkt) for code, mkt, _, _ in UNIVERSE]
     ContextInfo.set_universe(codes)
     _ensure_db(DB_PATH)
+    print("[DataExport] init OK, DB=" + DB_PATH)
+    if getattr(ContextInfo, "do_back_test", False):
+        print("[DataExport] WARNING: BACKTEST mode - switch to LIVE (run) mode to export real data.")
 
 
 def handlebar(ContextInfo):
@@ -243,10 +223,11 @@ def handlebar(ContextInfo):
             row["total_score"] = _total_score(row)
             rows.append(row)
 
-        except Exception:
-            pass
+        except Exception as e:
+            print("[DataExport] error {0}: {1}".format(full_code, e))
 
     if not rows:
+        print("[DataExport] no data collected, skipping DB write")
         return
 
     growth_count = sum(1 for r in rows if r["greater_m5"])
@@ -277,6 +258,7 @@ def handlebar(ContextInfo):
         _purge_old_records(conn, RETENTION_DAYS)
         conn.commit()
         conn.close()
+        print("[DataExport] wrote {0} rows at {1}".format(len(rows), now_str))
 
-    except Exception:
-        pass
+    except Exception as e:
+        print("[DataExport] DB write error: " + str(e))
