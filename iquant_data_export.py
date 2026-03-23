@@ -334,7 +334,6 @@ def handlebar(ContextInfo):
                 period="1m",
                 count=21,
                 dividend_type="none",
-                fill_data=True,
             )
             if df is None or df.empty:
                 continue
