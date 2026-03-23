@@ -1,3 +1,4 @@
+# -*- coding: GBK -*-
 import sqlite3
 import os
 import time
