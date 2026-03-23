@@ -11,6 +11,7 @@
 
 const http = require("http");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const url = require("url");
 
@@ -141,7 +142,9 @@ function getTimeSeriesDataFromDb(startTimeStr, endTimeStr, page, size) {
   }
 }
 
-const PORT = 8000;
+const PORT = parseInt(process.env.PORT, 10) || 8000;
+const HOST = process.env.HOST || "0.0.0.0";
+const ROOT_DIR = path.resolve(__dirname);
 
 // ─── Mock Data ──────────────────────────────────────────────────────────────
 
@@ -432,18 +435,18 @@ function generateTimeSeriesData(startTimeStr, endTimeStr, page, size) {
   };
 }
 
-function getAllData() {
-  if (dbAvailable()) {
-    try { const r = getAllDataFromDb(); if (r) return r; } catch (_) {}
-  }
-  return generateAllData();
-}
+function getLocalAccessUrls(port) {
+  const interfaces = os.networkInterfaces();
+  const urls = [];
 
-function getTimeSeriesData(startTime, endTime, page, size) {
-  if (dbAvailable()) {
-    try { const r = getTimeSeriesDataFromDb(startTime, endTime, page, size); if (r) return r; } catch (_) {}
-  }
-  return generateTimeSeriesData(startTime, endTime, page, size);
+  Object.values(interfaces).forEach((entries) => {
+    (entries || []).forEach((entry) => {
+      if (!entry || entry.internal || entry.family !== "IPv4") return;
+      urls.push(`http://${entry.address}:${port}`);
+    });
+  });
+
+  return Array.from(new Set(urls));
 }
 
 // ─── Mime Types ──────────────────────────────────────────────────────────────
@@ -506,7 +509,13 @@ const server = http.createServer((req, res) => {
   let filePath = pathname === "/" ? "/index.html" : pathname;
   // Strip query string from file path
   filePath = filePath.split("?")[0];
-  const fullPath = path.join(__dirname, filePath);
+  const normalizedPath = path.normalize(filePath).replace(/^([.][.][/\\])+/, "");
+  const fullPath = path.resolve(ROOT_DIR, `.${path.sep}${normalizedPath}`);
+  if (!fullPath.startsWith(ROOT_DIR + path.sep) && fullPath !== ROOT_DIR) {
+    res.writeHead(403, { "Content-Type": "text/plain" });
+    res.end("403 Forbidden");
+    return;
+  }
   const ext = path.extname(fullPath);
 
   fs.readFile(fullPath, (err, data) => {
@@ -520,12 +529,21 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, HOST, () => {
   const usingDb = dbAvailable();
-  console.log(`\n🚀 Server running at http://localhost:${PORT}`);
+  const localUrls = HOST === "0.0.0.0" ? getLocalAccessUrls(PORT) : [`http://${HOST}:${PORT}`];
+  console.log(`\n🚀 Server running at http://${HOST}:${PORT}`);
   console.log(`   Data source    : ${usingDb ? "SQLite (" + DB_PATH + ")" : "mock data (iQuant DB not found)"}`);
-  console.log(`   Main dashboard : http://localhost:${PORT}/`);
-  console.log(`   Time series    : http://localhost:${PORT}/stockTimeseries.html`);
-  console.log(`   API getAllData  : http://localhost:${PORT}/api/dataApi/getAllData`);
+  console.log(`   Main dashboard : http://${HOST}:${PORT}/`);
+  console.log(`   Time series    : http://${HOST}:${PORT}/stockTimeseries.html`);
+  console.log(`   API getAllData : http://${HOST}:${PORT}/api/dataApi/getAllData`);
+  if (localUrls.length) {
+    console.log("   LAN access     :");
+    localUrls.forEach((accessUrl) => console.log(`     - ${accessUrl}/`));
+  }
+  console.log("\n公网访问说明:");
+  console.log("   - 当前服务已监听 0.0.0.0，可被同一局域网设备访问");
+  console.log("   - 如需公网访问，请在路由器/云防火墙放行并映射该端口，或使用反向代理/内网穿透");
+  console.log(`   - 可通过 PORT 环境变量修改端口，例如: PORT=8080 node server.js`);
   console.log(`\nPress Ctrl+C to stop.\n`);
 });

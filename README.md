@@ -39,7 +39,9 @@ dataview-clone/
 node server.js
 ```
 
-Open http://localhost:8000 — runs on mock data until SQLite DB is present.
+Open `http://localhost:8000` on the same machine.
+
+If you want other devices to access the app, the server now listens on `0.0.0.0` by default and will print your LAN URLs at startup, for example `http://192.168.1.20:8000`.
 
 ## Real Data via iQuant
 
@@ -52,11 +54,25 @@ Open http://localhost:8000 — runs on mock data until SQLite DB is present.
 4. Start the server (DB path defaults to `C:\Users\Public\dataview\market_data.db`):
    ```bash
    node server.js
-   # or with a custom path:
+   # or with a custom DB path:
    DB_PATH="C:\your\path\market_data.db" node server.js
+   # or with a different port:
+   PORT=8080 DB_PATH="C:\your\path\market_data.db" node server.js
    ```
 
 The server auto-detects the DB. If it exists and has data, real iQuant data is served; otherwise mock data is used transparently.
+
+## Public / Internet Access
+
+Running `DB_PATH="C:\your\path\market_data.db" node server.js` now binds the server to `0.0.0.0`, so devices on the same LAN can open the dashboard using the printed `http://<your-LAN-IP>:8000` address.
+
+For true public internet access, you still need one of these outside the app:
+
+1. open and forward the server port on your router / cloud firewall to this machine, or
+2. put the app behind a reverse proxy on a public host, or
+3. use a tunnel service / frp / ngrok / Cloudflare Tunnel.
+
+The app itself is now ready to be served publicly once the network path is opened.
 
 ## API Endpoints
 
