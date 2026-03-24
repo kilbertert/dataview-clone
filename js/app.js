@@ -79,6 +79,15 @@ const StyleClassGenerator = {
     },
 
     /**
+     * 规范化买卖信号为中文
+     */
+    normalizeBuySellSignal(signal, totalScore) {
+        const formattedSignal = DataFormatter.formatBuySellSignal(signal);
+        if (formattedSignal) return formattedSignal;
+        return this.calculateBuySellSignal(totalScore);
+    },
+
+    /**
      * 获取总分样式类
      */
     getScoreClass(score, marketTrend) {
@@ -306,7 +315,8 @@ const UIRenderer = {
             marketTrend
         );
         // 根据总分计算买卖信号: 0,1,2=卖，其余=买
-        const buySellSignal = StyleClassGenerator.calculateBuySellSignal(
+        const buySellSignal = StyleClassGenerator.normalizeBuySellSignal(
+            item.buySellSignal,
             item.totalScore
         );
         const buySellSignalClass =

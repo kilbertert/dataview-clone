@@ -101,7 +101,7 @@ const TimeSeriesUIRenderer = {
      * 渲染时间序列表格
      * 列 = 时间点, 行 = 产品(ETF)
      */
-    renderTable(data) {
+    renderTable(payload) {
         const tableHead = document.getElementById("tableHead");
         const tableBody = document.getElementById("tableBody");
         const loadingDiv = document.getElementById("loadingDiv");
@@ -112,8 +112,10 @@ const TimeSeriesUIRenderer = {
         if (loadingDiv) loadingDiv.style.display = "none";
         if (errorDiv) errorDiv.style.display = "none";
 
-        if (!data || !data.timePoints || data.timePoints.length === 0 ||
-            !data.products || data.products.length === 0) {
+        const timeColumns = payload?.timeColumns || [];
+        const productRows = payload?.productRows || [];
+
+        if (!timeColumns.length || !productRows.length) {
             if (table) table.style.display = "none";
             if (noDataDiv) noDataDiv.style.display = "block";
             document.getElementById("timeColumnCount").textContent = "0";
@@ -124,26 +126,23 @@ const TimeSeriesUIRenderer = {
         if (table) table.style.display = "table";
         if (noDataDiv) noDataDiv.style.display = "none";
 
-        // Update counters
-        document.getElementById("timeColumnCount").textContent = data.timePoints.length;
-        document.getElementById("productRowCount").textContent = data.products.length;
+        document.getElementById("timeColumnCount").textContent = timeColumns.length;
+        document.getElementById("productRowCount").textContent = productRows.length;
 
-        // Build header: fixed col + time columns
         const headerRow = document.createElement("tr");
         headerRow.innerHTML = `<th class="fixed-col">产品</th>` +
-            data.timePoints.map(tp => `<th class="time-col">${TimeSeriesFormatter.formatTime(tp)}</th>`).join("");
+            timeColumns.map(tp => `<th class="time-col">${TimeSeriesFormatter.formatTime(tp)}</th>`).join("");
         tableHead.innerHTML = "";
         tableHead.appendChild(headerRow);
 
-        // Build body: one row per product
-        tableBody.innerHTML = data.products.map(product => {
-            const cells = data.timePoints.map(tp => {
-                const record = (data.records || []).find(
-                    r => r.etfCode === product.etfCode && r.createTime === tp
-                );
+        tableBody.innerHTML = productRows.map(product => {
+            const cells = timeColumns.map(tp => {
+                const record = product.timeSeriesData?.[tp];
                 if (!record) return `<td class="data-cell"><div class="data-cell-compact"><span style="color:#ccc">-</span></div></td>`;
 
-                const signal = TimeSeriesFormatter.calculateBuySellSignal(record.totalScore);
+                const signal = TimeSeriesFormatter.formatBuySellSignal(
+                    record.buySellSignal || TimeSeriesFormatter.calculateBuySellSignal(record.totalScore)
+                );
                 const signalClass = TimeSeriesFormatter.getSignalClass(signal);
                 const scoreClass = TimeSeriesFormatter.getScoreClass(record.totalScore);
 
@@ -202,11 +201,14 @@ const TimeSeriesUIRenderer = {
     /**
      * 渲染分页控件
      */
-    renderPagination(pagination, onPageChange, onSizeChange) {
+    renderPagination(meta, onPageChange, onSizeChange) {
         const paginationDiv = document.getElementById("paginationDiv");
         if (!paginationDiv) return;
 
-        const { page, size, total, totalPages } = pagination;
+        const page = meta.page || 1;
+        const size = meta.size || 10;
+        const total = meta.total || 0;
+        const totalPages = meta.totalPages || Math.max(1, Math.ceil(total / size));
         const start = total === 0 ? 0 : (page - 1) * size + 1;
         const end = Math.min(page * size, total);
 
@@ -309,20 +311,19 @@ async function exportExcel() {
             1,
             10000
         );
-        const { timePoints, products, records } = result.data;
+        const payload = result.data || {};
+        const timeColumns = payload.timeColumns || [];
+        const productRows = payload.productRows || [];
 
-        // Build CSV header
-        const headers = ["ETF代码", "名称", "行业", ...timePoints.map(tp =>
+        const headers = ["ETF代码", "名称", "行业", ...timeColumns.map(tp =>
             TimeSeriesFormatter.formatTime(tp) + "_总分"
         )];
         const rows = [headers.join(",")];
 
-        products.forEach(product => {
+        productRows.forEach(product => {
             const row = [product.etfCode, product.etfName || "", product.industry || ""];
-            timePoints.forEach(tp => {
-                const record = (records || []).find(
-                    r => r.etfCode === product.etfCode && r.createTime === tp
-                );
+            timeColumns.forEach(tp => {
+                const record = product.timeSeriesData?.[tp];
                 row.push(record ? (record.totalScore ?? "") : "");
             });
             rows.push(row.map(v => `"${v}"`).join(","));
@@ -352,28 +353,26 @@ async function loadData() {
             TimeSeriesState.currentPage,
             TimeSeriesState.pageSize
         );
-        const { data, pagination, lastUpdateTime } = result;
+        const payload = result.data || {};
 
         TimeSeriesUIRenderer.updateNetworkStatus("online");
-        if (lastUpdateTime) {
-            TimeSeriesUIRenderer.updateLastUpdateTime(lastUpdateTime);
+        if (payload.lastUpdateTime) {
+            TimeSeriesUIRenderer.updateLastUpdateTime(payload.lastUpdateTime);
         }
 
-        TimeSeriesUIRenderer.renderTable(data);
-        if (pagination) {
-            TimeSeriesUIRenderer.renderPagination(
-                pagination,
-                (page) => {
-                    TimeSeriesState.currentPage = page;
-                    loadData();
-                },
-                (size) => {
-                    TimeSeriesState.pageSize = size;
-                    TimeSeriesState.currentPage = 1;
-                    loadData();
-                }
-            );
-        }
+        TimeSeriesUIRenderer.renderTable(payload);
+        TimeSeriesUIRenderer.renderPagination(
+            payload,
+            (page) => {
+                TimeSeriesState.currentPage = page;
+                loadData();
+            },
+            (size) => {
+                TimeSeriesState.pageSize = size;
+                TimeSeriesState.currentPage = 1;
+                loadData();
+            }
+        );
     } catch (error) {
         console.error("获取时间序列数据失败:", error);
         TimeSeriesUIRenderer.updateNetworkStatus("offline");

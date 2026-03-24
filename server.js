@@ -35,50 +35,171 @@ function dbAvailable() {
   }
 }
 
+function formatExchangeCode(code) {
+  const codeStr = String(code || "").trim();
+  if (!codeStr) return codeStr;
+  if (codeStr.includes(".")) return codeStr;
+  if (codeStr.startsWith("6") || codeStr.startsWith("5") || codeStr.startsWith("688")) {
+    return `${codeStr}.SH`;
+  }
+  return `${codeStr}.SZ`;
+}
+
+function normalizeIndustry(industry) {
+  if (!industry) return "-";
+  return String(industry)
+    .replace(/^[一二三四五六七八九十]+、/, "")
+    .replace(/（仅ETF）/g, "")
+    .replace(/（含ETF与个股）/g, "")
+    .replace(/（含ETF）/g, "")
+    .trim();
+}
+
+function normalizeSignal(signal) {
+  if (signal === null || signal === undefined) return null;
+  const value = String(signal).trim().toUpperCase();
+  if (["BUY", "买", "多", "TRUE", "1"].includes(value)) return "BUY";
+  if (["SELL", "卖", "空", "FALSE", "0"].includes(value)) return "SELL";
+  return value || null;
+}
+
+function normalizeBoolean(value) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "boolean") return value;
+  if (typeof value === "number") return value !== 0;
+  const normalized = String(value).trim().toLowerCase();
+  if (["true", "1", "yes", "y", "买", "多"].includes(normalized)) return true;
+  if (["false", "0", "no", "n", "卖", "空"].includes(normalized)) return false;
+  return null;
+}
+
+function normalizeCode(rawCode) {
+  const code = String(rawCode || "").trim();
+  if (!code) return code;
+  return code.includes(".") ? code.slice(0, code.indexOf(".")) : code;
+}
+
+function roundNumber(value, decimals = 4) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return 0;
+  return parseFloat(Number(value).toFixed(decimals));
+}
+
+function mapSnapshotRow(row) {
+  const totalStockCount = Math.max(0, Number(row.total_stock_count ?? row.totalStockCount) || 0);
+  const rawGrowth = row.growth_stock_count ?? row.growthStockCount;
+  const growthStockCount = rawGrowth !== null && rawGrowth !== undefined
+    ? Math.min(totalStockCount, Math.max(0, Number(rawGrowth) || 0))
+    : Math.min(
+        totalStockCount,
+        Math.max(0, Math.round(Number(row.m5_percent ?? row.m5Percent ?? 0) * totalStockCount))
+      );
+  const totalScore = row.total_score ?? row.totalScore ?? null;
+  const buySellSignal = normalizeSignal(
+    row.buy_sell_signal
+    ?? row.buySellSignal
+    ?? row.m5_signal
+    ?? row.m5Signal
+  ) || (totalScore === null || totalScore === undefined ? null : totalScore <= 2 ? "SELL" : "BUY");
+  const stockCode = row.etf_code ?? row.etfCode ?? row.stock_code ?? row.stockCode;
+  const stockName = row.etf_name ?? row.etfName ?? row.stock_name ?? row.stockName ?? row.name;
+  const createTime = row.create_time ?? row.createTime ?? row.updateTime ?? formatDateTime(new Date());
+
+  return {
+    industry: normalizeIndustry(row.industry),
+    etfCode: formatExchangeCode(stockCode),
+    rawCode: normalizeCode(stockCode),
+    etfName: stockName || "-",
+    totalScore,
+    buySellSignal,
+    m5Signal: buySellSignal === "BUY" ? "多" : buySellSignal === "SELL" ? "空" : null,
+    greaterThanM5Price: normalizeBoolean(row.greater_m5 ?? row.greaterThanM5Price),
+    greaterThanM10Price: normalizeBoolean(row.greater_m10 ?? row.greaterThanM10Price),
+    greaterThanM20Price: normalizeBoolean(row.greater_m20 ?? row.greaterThanM20Price),
+    greaterThanM0Price: normalizeBoolean(row.greater_m0 ?? row.greaterThanM0Price),
+    holdStatus: normalizeBoolean(row.hold_status ?? row.holdStatus),
+    m0Percent: roundNumber(row.m0_percent ?? row.m0Percent),
+    m5Percent: roundNumber(row.m5_percent ?? row.m5Percent),
+    m10Percent: roundNumber(row.m10_percent ?? row.m10Percent),
+    m20Percent: roundNumber(row.m20_percent ?? row.m20Percent),
+    maMeanRatio: roundNumber(row.ma_mean_ratio ?? row.maMeanRatio),
+    growthStockCount,
+    totalStockCount,
+    latestPrice: row.close ?? row.latestPrice ?? null,
+    createTime,
+    updateTime: createTime,
+  };
+}
+
+function buildStatistics(stockDataList, lastUpdateTime) {
+  const list = Array.isArray(stockDataList) ? stockDataList : [];
+  const growthStockCount = list.reduce((sum, item) => sum + (Number(item.growthStockCount) || 0), 0);
+  const totalStockCount = list.reduce((sum, item) => sum + (Number(item.totalStockCount) || 0), 0);
+  const divisor = list.length || 1;
+  const m5Percent = list.reduce((sum, item) => sum + (Number(item.m5Percent) || 0), 0) / divisor;
+  const m10Percent = list.reduce((sum, item) => sum + (Number(item.m10Percent) || 0), 0) / divisor;
+  const m20Percent = list.reduce((sum, item) => sum + (Number(item.m20Percent) || 0), 0) / divisor;
+  const maMeanPercent = list.reduce((sum, item) => sum + (Number(item.maMeanRatio) || 0), 0) / divisor;
+  const marketTrend = growthStockCount > totalStockCount / 2 ? "BUY" : "SELL";
+
+  return {
+    lastUpdateTime,
+    dataCount: list.length,
+    marketTrend,
+    m5Percent: roundNumber(m5Percent),
+    m10Percent: roundNumber(m10Percent),
+    m20Percent: roundNumber(m20Percent),
+    maMeanPercent: roundNumber(maMeanPercent),
+    growthStockCount,
+    totalStockCount,
+  };
+}
+
+function createSuccessResponse(data) {
+  return {
+    code: "0",
+    msg: "操作成功",
+    success: true,
+    timestamp: Date.now(),
+    data,
+  };
+}
+
+function createAllDataResponse(stockDataList, lastUpdateTime) {
+  return createSuccessResponse({
+    dataStatistics: buildStatistics(stockDataList, lastUpdateTime),
+    stockDataList,
+  });
+}
+
+function createTimeseriesCell(row) {
+  const mapped = mapSnapshotRow(row);
+  return {
+    totalScore: mapped.totalScore,
+    buySellSignal: mapped.buySellSignal,
+    greaterThanM5Price: mapped.greaterThanM5Price,
+    greaterThanM10Price: mapped.greaterThanM10Price,
+    greaterThanM20Price: mapped.greaterThanM20Price,
+    m0Percent: mapped.m0Percent,
+    m5Percent: mapped.m5Percent,
+    m10Percent: mapped.m10Percent,
+    m20Percent: mapped.m20Percent,
+    maMeanRatio: mapped.maMeanRatio,
+    growthStockCount: mapped.growthStockCount,
+    totalStockCount: mapped.totalStockCount,
+    latestPrice: mapped.latestPrice,
+  };
+}
+
 function getAllDataFromDb() {
   const db = new Database(DB_PATH, { readonly: true, fileMustExist: true });
   try {
     const rows = db.prepare("SELECT * FROM latest_snapshot ORDER BY etf_code").all();
     if (!rows.length) return null;
 
-    const now = rows[0].create_time;
-    const growthCount = rows.filter(r => r.greater_m5).length;
-    const m5Avg  = rows.reduce((s, r) => s + r.m5_percent,  0) / rows.length;
-    const m10Avg = rows.reduce((s, r) => s + r.m10_percent, 0) / rows.length;
-    const m20Avg = rows.reduce((s, r) => s + r.m20_percent, 0) / rows.length;
-    const maAvg  = rows.reduce((s, r) => s + r.ma_mean_ratio, 0) / rows.length;
+    const lastUpdateTime = rows[0].create_time;
+    const stockDataList = rows.map((row) => mapSnapshotRow(row));
 
-    return {
-      dataStatistics: {
-        lastUpdateTime: now,
-        marketTrend: growthCount > rows.length / 2 ? "BUY" : "SELL",
-        m5Percent:      parseFloat(m5Avg.toFixed(4)),
-        m10Percent:     parseFloat(m10Avg.toFixed(4)),
-        m20Percent:     parseFloat(m20Avg.toFixed(4)),
-        maMeanPercent:  parseFloat(maAvg.toFixed(4)),
-        growthStockCount: growthCount,
-        totalStockCount:  rows.length,
-      },
-      stockDataList: rows.map(r => ({
-        etfCode:           r.etf_code,
-        etfName:           r.etf_name,
-        industry:          r.industry,
-        totalScore:        r.total_score,
-        createTime:        r.create_time,
-        greaterThanM5Price:  !!r.greater_m5,
-        greaterThanM10Price: !!r.greater_m10,
-        greaterThanM20Price: !!r.greater_m20,
-        greaterThanM0Price:  !!r.greater_m0,
-        holdStatus:        !!r.hold_status,
-        m0Percent:         r.m0_percent,
-        m5Percent:         r.m5_percent,
-        m10Percent:        r.m10_percent,
-        m20Percent:        r.m20_percent,
-        maMeanRatio:       r.ma_mean_ratio,
-        growthStockCount:  r.growth_stock_count,
-        totalStockCount:   r.total_stock_count,
-      })),
-    };
+    return createAllDataResponse(stockDataList, lastUpdateTime);
   } finally {
     db.close();
   }
@@ -90,53 +211,53 @@ function getTimeSeriesDataFromDb(startTimeStr, endTimeStr, page, size) {
     const start = startTimeStr || new Date(Date.now() - 7 * 86400000).toISOString().replace("T", " ").slice(0, 19);
     const end   = endTimeStr   || new Date().toISOString().replace("T", " ").slice(0, 19);
 
-    // Distinct time points in range
-    const timePoints = db.prepare(
-      "SELECT DISTINCT create_time FROM timeseries WHERE create_time BETWEEN ? AND ? ORDER BY create_time"
-    ).all(start, end).map(r => r.create_time);
+    const timeColumns = db.prepare(
+      "SELECT DISTINCT create_time FROM timeseries WHERE create_time BETWEEN ? AND ? ORDER BY create_time DESC"
+    ).all(start, end).map(r => r.create_time.slice(0, 16));
 
-    // Distinct products (paginated)
     const allProducts = db.prepare(
-      "SELECT DISTINCT etf_code, etf_name, industry FROM timeseries ORDER BY etf_code"
+      "SELECT etf_code, etf_name, industry, MAX(create_time) AS latest_time FROM timeseries GROUP BY etf_code, etf_name, industry ORDER BY etf_code"
     ).all();
-    const total      = allProducts.length;
+    const total = allProducts.length;
     const totalPages = Math.ceil(total / size) || 1;
-    const safePage   = Math.max(1, Math.min(page, totalPages));
-    const products   = allProducts.slice((safePage - 1) * size, safePage * size);
-    const codes      = products.map(p => p.etf_code);
+    const safePage = Math.max(1, Math.min(page, totalPages));
+    const products = allProducts.slice((safePage - 1) * size, safePage * size);
+    const codes = products.map(p => p.etf_code);
 
-    const records = codes.length && timePoints.length
+    const rows = codes.length && timeColumns.length
       ? db.prepare(
           `SELECT * FROM timeseries
            WHERE etf_code IN (${codes.map(() => "?").join(",")})
              AND create_time BETWEEN ? AND ?
-           ORDER BY etf_code, create_time`
-        ).all(...codes, start, end).map(r => ({
-          etfCode:           r.etf_code,
-          etfName:           r.etf_name,
-          industry:          r.industry,
-          totalScore:        r.total_score,
-          createTime:        r.create_time,
-          greaterThanM5Price:  !!r.greater_m5,
-          greaterThanM10Price: !!r.greater_m10,
-          greaterThanM20Price: !!r.greater_m20,
-          greaterThanM0Price:  !!r.greater_m0,
-          holdStatus:        !!r.hold_status,
-          m0Percent:         r.m0_percent,
-          m5Percent:         r.m5_percent,
-          m10Percent:        r.m10_percent,
-          m20Percent:        r.m20_percent,
-          maMeanRatio:       r.ma_mean_ratio,
-          growthStockCount:  r.growth_stock_count,
-          totalStockCount:   r.total_stock_count,
-        }))
+           ORDER BY etf_code, create_time DESC`
+        ).all(...codes, start, end)
       : [];
 
-    return {
-      data: { timePoints, products, records },
-      pagination: { page: safePage, size, total, totalPages },
-      lastUpdateTime: formatDateTime(new Date()),
-    };
+    const productRows = products.map((product) => {
+      const productCode = product.etf_code;
+      const rowRecords = rows.filter((row) => row.etf_code === productCode);
+      const timeSeriesData = rowRecords.reduce((acc, row) => {
+        acc[row.create_time.slice(0, 16)] = createTimeseriesCell(row);
+        return acc;
+      }, {});
+
+      return {
+        etfCode: formatExchangeCode(product.etf_code),
+        industry: normalizeIndustry(product.industry),
+        etfName: product.etf_name,
+        timeSeriesData,
+      };
+    });
+
+    return createSuccessResponse({
+      timeColumns,
+      productRows,
+      total,
+      page: safePage,
+      size,
+      totalPages,
+      lastUpdateTime: rows[0]?.create_time || formatDateTime(new Date()),
+    });
   } finally {
     db.close();
   }
@@ -344,24 +465,30 @@ function formatDateTime(date) {
 
 function generateStockRecord(etf, timeStr) {
   const totalScore = randomInt(0, 5);
+  const totalStockCount = Math.max(0, Number(etf.totalStockCount) || 0) || randomInt(20, 60);
+  const growthStockCount = randomInt(0, totalStockCount);
+  const latestPrice = randomFloat(0.8, 8, 3);
+
   return {
-    etfCode: etf.etfCode,
+    industry: normalizeIndustry(etf.industry),
+    etfCode: formatExchangeCode(etf.etfCode),
     etfName: etf.etfName,
-    industry: etf.industry,
     totalScore,
+    buySellSignal: totalScore <= 2 ? "SELL" : "BUY",
     createTime: timeStr || formatDateTime(new Date()),
     greaterThanM5Price: randomBool(),
     greaterThanM10Price: randomBool(),
     greaterThanM20Price: randomBool(),
     greaterThanM0Price: randomBool(),
     holdStatus: randomBool(),
-    m0Percent: randomFloat(0.2, 0.9),
-    m5Percent: randomFloat(0.2, 0.9),
-    m10Percent: randomFloat(0.2, 0.9),
-    m20Percent: randomFloat(0.2, 0.9),
-    maMeanRatio: randomFloat(0.2, 0.9),
-    growthStockCount: randomInt(5, 50),
-    totalStockCount: randomInt(50, 200),
+    m0Percent: randomFloat(0.02, 0.2),
+    m5Percent: randomFloat(0.02, 0.2),
+    m10Percent: randomFloat(0.02, 0.2),
+    m20Percent: randomFloat(0.02, 0.2),
+    maMeanRatio: randomFloat(0.02, 0.2),
+    growthStockCount,
+    totalStockCount,
+    latestPrice,
   };
 }
 
@@ -369,70 +496,70 @@ function generateAllData() {
   const now = new Date();
   const timeStr = formatDateTime(now);
   const stockDataList = ETF_LIST.map((etf) => generateStockRecord(etf, timeStr));
-  const growthCount = stockDataList.filter((s) => s.greaterThanM5Price).length;
-
-  return {
-    dataStatistics: {
-      lastUpdateTime: timeStr,
-      marketTrend: Math.random() > 0.5 ? "BUY" : "SELL",
-      m5Percent: randomFloat(0.3, 0.8),
-      m10Percent: randomFloat(0.3, 0.8),
-      m20Percent: randomFloat(0.3, 0.8),
-      maMeanPercent: randomFloat(0.3, 0.8),
-      growthStockCount: growthCount,
-      totalStockCount: ETF_LIST.length,
-    },
-    stockDataList,
-  };
+  return createAllDataResponse(stockDataList, timeStr);
 }
 
 function generateTimeSeriesData(startTimeStr, endTimeStr, page, size) {
-  // Build a list of time points between start and end (every 2 hours, max 20 points)
   const start = startTimeStr ? new Date(startTimeStr.replace(" ", "T")) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const end = endTimeStr ? new Date(endTimeStr.replace(" ", "T")) : new Date();
 
-  const interval = 2 * 60 * 60 * 1000; // 2 hours
-  const allTimePoints = [];
-  let cursor = new Date(start);
-  while (cursor <= end && allTimePoints.length < 20) {
-    allTimePoints.push(formatDateTime(new Date(cursor)));
-    cursor = new Date(cursor.getTime() + interval);
+  const interval = 2 * 60 * 60 * 1000;
+  const timeColumns = [];
+  let cursor = new Date(end);
+  while (cursor >= start && timeColumns.length < 20) {
+    timeColumns.push(formatDateTime(new Date(cursor)).slice(0, 16));
+    cursor = new Date(cursor.getTime() - interval);
   }
 
-  // Paginate products
   const total = ETF_LIST.length;
-  const totalPages = Math.ceil(total / size);
+  const totalPages = Math.ceil(total / size) || 1;
   const safePage = Math.max(1, Math.min(page, totalPages));
   const slicedProducts = ETF_LIST.slice((safePage - 1) * size, safePage * size);
 
-  // Generate records for each product × time point
-  const records = [];
-  slicedProducts.forEach((etf) => {
-    allTimePoints.forEach((tp) => {
-      records.push(generateStockRecord(etf, tp));
-    });
+  const productRows = slicedProducts.map((etf) => {
+    const timeSeriesData = timeColumns.reduce((acc, tp) => {
+      acc[tp] = createTimeseriesCell(
+        {
+          etf_code: etf.etfCode,
+          etf_name: etf.etfName,
+          industry: etf.industry,
+          total_score: randomInt(0, 5),
+          greater_m5: randomBool(),
+          greater_m10: randomBool(),
+          greater_m20: randomBool(),
+          greater_m0: randomBool(),
+          hold_status: randomBool(),
+          m0_percent: randomFloat(0.02, 0.2),
+          m5_percent: randomFloat(0.02, 0.2),
+          m10_percent: randomFloat(0.02, 0.2),
+          m20_percent: randomFloat(0.02, 0.2),
+          ma_mean_ratio: randomFloat(0.02, 0.2),
+          growth_stock_count: randomInt(0, 20),
+          total_stock_count: randomInt(20, 80),
+          close: randomFloat(0.8, 8, 3),
+        },
+        randomInt(20, 80)
+      );
+      return acc;
+    }, {});
+
+    return {
+      etfCode: formatExchangeCode(etf.etfCode),
+      industry: normalizeIndustry(etf.industry),
+      etfName: etf.etfName,
+      timeSeriesData,
+    };
   });
 
-  const lastUpdateTime = formatDateTime(new Date());
-
-  return {
-    data: {
-      timePoints: allTimePoints,
-      products: slicedProducts.map((e) => ({
-        etfCode: e.etfCode,
-        etfName: e.etfName,
-        industry: e.industry,
-      })),
-      records,
-    },
-    pagination: {
-      page: safePage,
-      size,
-      total,
-      totalPages,
-    },
-    lastUpdateTime,
-  };
+  return createSuccessResponse({
+    timeColumns,
+    productRows,
+    total,
+    page: safePage,
+    size,
+    totalPages,
+    lastUpdateTime: formatDateTime(new Date()),
+  });
 }
 
 function getLocalAccessUrls(port) {
@@ -487,7 +614,7 @@ const server = http.createServer((req, res) => {
     }
     if (!result) result = generateAllData();
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ data: result }));
+    res.end(JSON.stringify(result));
     return;
   }
 

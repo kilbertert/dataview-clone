@@ -19,3 +19,5 @@ Thumbs.db
 .env.local
 
 /__pycache__/
+# 新增：忽略 service 文件夹
+service/

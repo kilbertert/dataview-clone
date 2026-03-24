@@ -200,6 +200,64 @@ MA_PERIODS = [5, 10, 20]
 # Days of timeseries history to retain
 RETENTION_DAYS = 30
 
+ETF_CONSTITUENTS = {
+    "588000.SH": ["588000.SH"],
+    "515070.SH": ["515070.SH"],
+    "516630.SH": ["516630.SH"],
+    "515050.SH": ["515050.SH"],
+    "512480.SH": ["512480.SH"],
+    "512760.SH": ["512760.SH"],
+    "159869.SZ": ["159869.SZ"],
+    "516620.SH": ["516620.SH"],
+    "512980.SH": ["512980.SH"],
+    "562500.SH": ["562500.SH"],
+    "159807.SZ": ["159807.SZ"],
+    "562910.SH": ["562910.SH"],
+    "513100.SH": ["513100.SH"],
+    "513130.SH": ["513130.SH"],
+    "513330.SH": ["513330.SH"],
+    "513050.SH": ["513050.SH"],
+    "159792.SZ": ["159792.SZ"],
+    "513180.SH": ["513180.SH"],
+    "159636.SZ": ["159636.SZ", "09988.HK", "00700.HK", "03690.HK", "01810.HK", "00981.HK", "01211.HK", "01024.HK", "02015.HK", "09868.HK", "06160.HK", "02269.HK", "01801.HK", "09926.HK", "02382.HK", "00020.HK", "00268.HK", "03888.HK", "09863.HK", "06618.HK", "00285.HK", "00241.HK", "02018.HK", "00780.HK", "09626.HK", "01530.HK", "01347.HK", "01548.HK", "00522.HK", "02359.HK", "02228.HK"],
+    "513160.SH": ["513160.SH"],
+    "159920.SZ": ["159920.SZ"],
+    "513520.SH": ["513520.SH"],
+    "512690.SH": ["512690.SH"],
+    "159928.SZ": ["159928.SZ"],
+    "513970.SH": ["513970.SH"],
+    "512010.SH": ["512010.SH"],
+    "560080.SH": ["560080.SH"],
+    "512170.SH": ["512170.SH"],
+    "159992.SZ": ["159992.SZ"],
+    "513120.SH": ["513120.SH"],
+    "159755.SZ": ["159755.SZ"],
+    "515790.SH": ["515790.SH"],
+    "159806.SZ": ["159806.SZ"],
+    "159790.SZ": ["159790.SZ"],
+    "516110.SH": ["516110.SH"],
+    "512000.SH": ["512000.SH"],
+    "513090.SH": ["513090.SH"],
+    "159851.SZ": ["159851.SZ"],
+    "512800.SH": ["512800.SH"],
+    "515220.SH": ["515220.SH"],
+    "159930.SZ": ["159930.SZ"],
+    "510880.SH": ["510880.SH"],
+    "518880.SH": ["518880.SH"],
+    "512400.SH": ["512400.SH"],
+    "516780.SH": ["516780.SH"],
+    "512660.SH": ["512660.SH"],
+    "159901.SZ": ["159901.SZ"],
+    "159902.SZ": ["159902.SZ"],
+    "159781.SZ": ["159781.SZ"],
+    "159915.SZ": ["159915.SZ"],
+    "510300.SH": ["510300.SH"],
+    "510500.SH": ["510500.SH"],
+}
+
+CODE_TO_FULL = dict((code, "{0}.{1}".format(code, mkt)) for code, mkt, _, _ in UNIVERSE)
+ETF_CODES = set(ETF_CONSTITUENTS.keys())
+
 def _ensure_db(db_path):
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     conn = sqlite3.connect(db_path)
@@ -281,13 +339,6 @@ def _calc_ma(prices, period):
     return sum(prices[-period:]) / period
 
 
-def _calc_percent_above_ma(close_list, ma_val):
-    if not ma_val or not close_list:
-        return 0.0
-    above = sum(1 for c in close_list if c > ma_val)
-    return round(above / len(close_list), 4)
-
-
 def _total_score(row):
     return sum([
         int(row["greater_m5"]),
@@ -303,6 +354,98 @@ def _purge_old_records(conn, days):
         time.localtime(time.time() - days * 86400)
     )
     conn.execute("DELETE FROM timeseries WHERE create_time < ?", (cutoff,))
+
+
+def _get_constituent_codes(code, mkt):
+    full_code = "{0}.{1}".format(code, mkt)
+    constituents = ETF_CONSTITUENTS.get(full_code)
+    if not constituents:
+        return []
+    return [c for c in constituents if c != full_code]
+
+
+def _get_constituent_statistics(ContextInfo, code, mkt):
+    constituent_codes = _get_constituent_codes(code, mkt)
+    if not constituent_codes:
+        return 0, 0
+
+    try:
+        full_tick = ContextInfo.get_full_tick(constituent_codes)
+    except Exception:
+        full_tick = {}
+
+    total_count = 0
+    rise_count = 0
+    for stock_code in constituent_codes:
+        tick = full_tick.get(stock_code)
+        if not tick:
+            continue
+        try:
+            last_price = float(tick["lastPrice"])
+            last_close = float(tick["lastClose"])
+        except Exception:
+            continue
+        total_count += 1
+        if last_price > last_close:
+            rise_count += 1
+
+    return rise_count, total_count
+
+
+def _get_constituent_ma_statistics(ContextInfo, code, mkt, windows):
+    constituent_codes = _get_constituent_codes(code, mkt)
+    if not constituent_codes:
+        return dict((window, 0.0) for window in windows), 0
+
+    try:
+        full_tick = ContextInfo.get_full_tick(constituent_codes)
+    except Exception:
+        full_tick = {}
+
+    total_count = 0
+    rise_counts = dict((window, 0) for window in windows)
+
+    for stock_code in constituent_codes:
+        tick = full_tick.get(stock_code)
+        if not tick:
+            continue
+
+        try:
+            last_price = float(tick["lastPrice"])
+        except Exception:
+            continue
+
+        total_count += 1
+
+        for window in windows:
+            try:
+                history = ContextInfo.get_market_data(
+                    fields=["close"],
+                    stock_code=[stock_code],
+                    period="1d",
+                    count=window - 1,
+                    dividend_type="none",
+                )
+            except Exception:
+                history = None
+
+            if history is None or history.empty or len(history) < window - 1:
+                continue
+
+            closes = [_safe_float(v) for v in history["close"].tolist()]
+            prices_for_ma = closes[-(window - 1):] + [last_price]
+            if len(prices_for_ma) != window:
+                continue
+
+            ma_value = sum(prices_for_ma) / window
+            if last_price > ma_value:
+                rise_counts[window] += 1
+
+    percents = {}
+    for window in windows:
+        percents[window] = round(rise_counts[window] / total_count, 4) if total_count else 0.0
+
+    return percents, total_count
 
 
 def init(ContextInfo):
@@ -322,7 +465,6 @@ def handlebar(ContextInfo):
     now_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
     rows = []
-    close_values = {}
 
     for code, mkt, name, industry in UNIVERSE:
         full_code = "{0}.{1}".format(code, mkt)
@@ -343,7 +485,6 @@ def handlebar(ContextInfo):
                 continue
 
             current_close = closes[-1]
-            close_values[code] = current_close
 
             m5  = _calc_ma(closes, 5)
             m10 = _calc_ma(closes, 10)
@@ -355,10 +496,15 @@ def handlebar(ContextInfo):
             greater_m20 = current_close > m20 if m20 else False
             greater_m0  = current_close > m0
 
-            m5_pct  = _calc_percent_above_ma(closes, m5)
-            m10_pct = _calc_percent_above_ma(closes, m10)
-            m20_pct = _calc_percent_above_ma(closes, m20)
-            m0_pct  = _calc_percent_above_ma(closes, m0)
+            rise_count, total_count = _get_constituent_statistics(ContextInfo, code, mkt)
+            ma_percents, ma_total_count = _get_constituent_ma_statistics(ContextInfo, code, mkt, MA_PERIODS)
+            if ma_total_count:
+                total_count = ma_total_count
+
+            m5_pct = ma_percents.get(5, 0.0)
+            m10_pct = ma_percents.get(10, 0.0)
+            m20_pct = ma_percents.get(20, 0.0)
+            m0_pct = round(rise_count / total_count, 4) if total_count else 0.0
             ma_mean_ratio = round((m5_pct + m10_pct + m20_pct + m0_pct) / 4, 4)
 
             row = {
@@ -380,8 +526,8 @@ def handlebar(ContextInfo):
                 "m10_percent": m10_pct,
                 "m20_percent": m20_pct,
                 "ma_mean_ratio": ma_mean_ratio,
-                "growth_stock_count": 0,
-                "total_stock_count":  len(UNIVERSE),
+                "growth_stock_count": rise_count,
+                "total_stock_count":  total_count,
                 "create_time": now_str,
             }
             row["total_score"] = _total_score(row)
@@ -393,10 +539,6 @@ def handlebar(ContextInfo):
     if not rows:
         print("[DataExport] no data collected, skipping DB write")
         return
-
-    growth_count = sum(1 for r in rows if r["greater_m5"])
-    for r in rows:
-        r["growth_stock_count"] = growth_count
 
     try:
         conn = sqlite3.connect(DB_PATH, timeout=5)
