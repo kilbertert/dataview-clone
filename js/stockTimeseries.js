@@ -394,8 +394,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("startTime").value = toLocal(weekAgo);
     document.getElementById("endTime").value = toLocal(now);
 
-    TimeSeriesState.startTime = weekAgo.toISOString().slice(0, 19).replace("T", " ");
-    TimeSeriesState.endTime = now.toISOString().slice(0, 19).replace("T", " ");
+    TimeSeriesState.startTime = toLocal(weekAgo).replace("T", " ") + ":00";
+    TimeSeriesState.endTime = toLocal(now).replace("T", " ") + ":00";
 
     loadData();
 });

@@ -15,19 +15,43 @@ const os = require("os");
 const path = require("path");
 const url = require("url");
 
-// SQLite support (optional — falls back to mock if not available)
-let Database;
-try { Database = require("better-sqlite3"); } catch (_) {}
+// SQLite support: prefer better-sqlite3, fall back to built-in node:sqlite
+const sqliteConnectionFactories = [];
+try {
+  const BetterSqlite3 = require("better-sqlite3");
+  sqliteConnectionFactories.push((dbPath) => new BetterSqlite3(dbPath, { readonly: true, fileMustExist: true }));
+} catch (_) {}
+try {
+  const { DatabaseSync } = require("node:sqlite");
+  sqliteConnectionFactories.push((dbPath) => new DatabaseSync(dbPath, { open: true, readOnly: true }));
+} catch (_) {}
+let activeSqliteFactory = null;
 
 // Path must match DB_PATH in iquant_data_export.py
 const DB_PATH = process.env.DB_PATH || "C:\\Users\\Public\\dataview\\market_data.db";
 
 // ─── SQLite Readers ───────────────────────────────────────────────────────────
 
+function openReadOnlyDb() {
+  if (activeSqliteFactory) {
+    return activeSqliteFactory(DB_PATH);
+  }
+
+  for (const factory of sqliteConnectionFactories) {
+    try {
+      const db = factory(DB_PATH);
+      activeSqliteFactory = factory;
+      return db;
+    } catch (_) {}
+  }
+
+  throw new Error("SQLite driver unavailable");
+}
+
 function dbAvailable() {
-  if (!Database) return false;
+  if (!sqliteConnectionFactories.length) return false;
   try {
-    const db = new Database(DB_PATH, { readonly: true, fileMustExist: true });
+    const db = openReadOnlyDb();
     db.close();
     return true;
   } catch (_) {
@@ -209,7 +233,7 @@ function createTimeseriesCell(row) {
 }
 
 function getAllDataFromDb() {
-  const db = new Database(DB_PATH, { readonly: true, fileMustExist: true });
+  const db = openReadOnlyDb();
   try {
     const rows = db.prepare("SELECT * FROM latest_snapshot ORDER BY etf_code").all();
     if (!rows.length) return null;
@@ -224,7 +248,7 @@ function getAllDataFromDb() {
 }
 
 function getTimeSeriesDataFromDb(startTimeStr, endTimeStr, page, size) {
-  const db = new Database(DB_PATH, { readonly: true, fileMustExist: true });
+  const db = openReadOnlyDb();
   try {
     const start = startTimeStr || new Date(Date.now() - 7 * 86400000).toISOString().replace("T", " ").slice(0, 19);
     const end   = endTimeStr   || new Date().toISOString().replace("T", " ").slice(0, 19);
