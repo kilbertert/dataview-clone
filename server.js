@@ -132,14 +132,32 @@ function mapSnapshotRow(row) {
 
 function buildStatistics(stockDataList, lastUpdateTime) {
   const list = Array.isArray(stockDataList) ? stockDataList : [];
-  const growthStockCount = list.reduce((sum, item) => sum + (Number(item.growthStockCount) || 0), 0);
-  const totalStockCount = list.reduce((sum, item) => sum + (Number(item.totalStockCount) || 0), 0);
-  const divisor = list.length || 1;
-  const m5Percent = list.reduce((sum, item) => sum + (Number(item.m5Percent) || 0), 0) / divisor;
-  const m10Percent = list.reduce((sum, item) => sum + (Number(item.m10Percent) || 0), 0) / divisor;
-  const m20Percent = list.reduce((sum, item) => sum + (Number(item.m20Percent) || 0), 0) / divisor;
-  const maMeanPercent = list.reduce((sum, item) => sum + (Number(item.maMeanRatio) || 0), 0) / divisor;
-  const marketTrend = growthStockCount > totalStockCount / 2 ? "BUY" : "SELL";
+  const aggregated = list.reduce((acc, item) => {
+    const totalStockCount = Math.max(0, Number(item.totalStockCount) || 0);
+    const growthStockCount = Math.min(totalStockCount, Math.max(0, Number(item.growthStockCount) || 0));
+
+    acc.growthStockCount += growthStockCount;
+    acc.totalStockCount += totalStockCount;
+    acc.m5Weighted += (Number(item.m5Percent) || 0) * totalStockCount;
+    acc.m10Weighted += (Number(item.m10Percent) || 0) * totalStockCount;
+    acc.m20Weighted += (Number(item.m20Percent) || 0) * totalStockCount;
+    acc.maMeanWeighted += (Number(item.maMeanRatio) || 0) * totalStockCount;
+    return acc;
+  }, {
+    growthStockCount: 0,
+    totalStockCount: 0,
+    m5Weighted: 0,
+    m10Weighted: 0,
+    m20Weighted: 0,
+    maMeanWeighted: 0,
+  });
+
+  const divisor = aggregated.totalStockCount || 1;
+  const m5Percent = aggregated.m5Weighted / divisor;
+  const m10Percent = aggregated.m10Weighted / divisor;
+  const m20Percent = aggregated.m20Weighted / divisor;
+  const maMeanPercent = aggregated.maMeanWeighted / divisor;
+  const marketTrend = m5Percent >= 0.5 ? "BUY" : "SELL";
 
   return {
     lastUpdateTime,
@@ -149,8 +167,8 @@ function buildStatistics(stockDataList, lastUpdateTime) {
     m10Percent: roundNumber(m10Percent),
     m20Percent: roundNumber(m20Percent),
     maMeanPercent: roundNumber(maMeanPercent),
-    growthStockCount,
-    totalStockCount,
+    growthStockCount: aggregated.growthStockCount,
+    totalStockCount: aggregated.totalStockCount,
   };
 }
 

@@ -74,8 +74,7 @@ const StyleClassGenerator = {
      */
     calculateBuySellSignal(totalScore) {
         if (totalScore === null || totalScore === undefined) return "卖";
-        // 0, 1, 2 = 卖，其余 = 买
-        return totalScore <= 2 ? "卖" : "买";
+        return totalScore >= 4 ? "买" : "卖";
     },
 
     /**
@@ -242,7 +241,6 @@ const UIRenderer = {
         const m10Percent = (statistics.m10Percent * 100).toFixed(2);
         const m20Percent = (statistics.m20Percent * 100).toFixed(2);
         const maMeanPercent = (statistics.maMeanPercent * 100).toFixed(2);
-        // 格式化大盘趋势,将 BUY/SELL 映射为 买/卖
         const marketTrend = DataFormatter.formatBuySellSignal(
             statistics.marketTrend
         );
@@ -263,7 +261,7 @@ const UIRenderer = {
       <div class="stat-card ${
           changedStats.has("m5Percent") ? "highlight-stat" : ""
       }">
-        <div class="stat-label">大盘指数占比</div>
+        <div class="stat-label">M5占比</div>
         <div class="stat-value">${m5Percent}%</div>
       </div>
       <div class="stat-card ${
@@ -287,13 +285,13 @@ const UIRenderer = {
       <div class="stat-card ${
           changedStats.has("growthStockCount") ? "highlight-stat" : ""
       }">
-        <div class="stat-label">增长股数</div>
+        <div class="stat-label">上涨股数</div>
         <div class="stat-value">${statistics.growthStockCount}</div>
       </div>
       <div class="stat-card ${
           changedStats.has("totalStockCount") ? "highlight-stat" : ""
       }">
-        <div class="stat-label">总股数</div>
+        <div class="stat-label">成分股总数</div>
         <div class="stat-value">${statistics.totalStockCount}</div>
       </div>
     `;

@@ -43,7 +43,7 @@ const TimeSeriesFormatter = {
      */
     calculateBuySellSignal(totalScore) {
         if (totalScore === null || totalScore === undefined) return "卖";
-        return totalScore <= 2 ? "卖" : "买";
+        return totalScore >= 4 ? "买" : "卖";
     },
 
     /**

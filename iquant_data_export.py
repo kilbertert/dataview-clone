@@ -340,12 +340,26 @@ def _calc_ma(prices, period):
 
 
 def _total_score(row):
-    return sum([
-        int(row["greater_m5"]),
-        int(row["greater_m10"]),
-        int(row["greater_m20"]),
-        int(row["greater_m0"]),
-    ])
+    score = 0
+    threshold = 0.5
+
+    if row.get("m5_percent", 0.0) >= threshold:
+        score += 1
+    if row.get("m10_percent", 0.0) >= threshold:
+        score += 1
+    if row.get("m20_percent", 0.0) >= threshold:
+        score += 1
+    if row.get("ma_mean_ratio", 0.0) >= threshold:
+        score += 1
+
+    if row["greater_m5"]:
+        score += 1
+    if row["greater_m10"]:
+        score += 1
+    if row["greater_m20"]:
+        score += 1
+
+    return score
 
 
 def _purge_old_records(conn, days):
