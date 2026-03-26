@@ -114,20 +114,24 @@ function roundNumber(value, decimals = 4) {
 }
 
 function normalizeCountPair(stockCode, totalValue, growthValue, fallbackRatio) {
+  if (!isTrackedEtfCode(stockCode)) {
+    return { totalStockCount: null, growthStockCount: null };
+  }
+
+  const fallbackTotalCount = ETF_CONSTITUENT_COUNTS[formatExchangeCode(stockCode)] ?? null;
   const rawTotal = totalValue;
   const rawGrowth = growthValue;
   const hasTotal = rawTotal !== null && rawTotal !== undefined && rawTotal !== "";
   const hasGrowth = rawGrowth !== null && rawGrowth !== undefined && rawGrowth !== "";
 
-  if (!hasTotal && !hasGrowth) {
+  const totalStockCount = hasTotal
+    ? Math.max(0, Number(rawTotal) || 0)
+    : fallbackTotalCount;
+
+  if (totalStockCount === null || totalStockCount === undefined) {
     return { totalStockCount: null, growthStockCount: null };
   }
 
-  if (!isTrackedEtfCode(stockCode)) {
-    return { totalStockCount: null, growthStockCount: null };
-  }
-
-  const totalStockCount = Math.max(0, Number(rawTotal) || 0);
   const growthStockCount = hasGrowth
     ? Math.min(totalStockCount, Math.max(0, Number(rawGrowth) || 0))
     : Math.min(totalStockCount, Math.max(0, Math.round((Number(fallbackRatio) || 0) * totalStockCount)));
@@ -348,6 +352,63 @@ const ROOT_DIR = path.resolve(__dirname);
 // Matches 目标股票池.md and UNIVERSE in iquant_data_export.py
 const TARGET_POOL_COUNT = 164;
 
+const ETF_CONSTITUENT_COUNTS = {
+  "588000.SH": 49,
+  "515070.SH": 54,
+  "516630.SH": 51,
+  "515050.SH": 47,
+  "512480.SH": 97,
+  "512760.SH": 50,
+  "159869.SZ": 31,
+  "516620.SH": 36,
+  "512980.SH": 51,
+  "562500.SH": 50,
+  "159807.SZ": 34,
+  "562910.SH": 49,
+  "513100.SH": 13,
+  "513130.SH": 2,
+  "513330.SH": 31,
+  "513050.SH": 36,
+  "159792.SZ": 30,
+  "513180.SH": 24,
+  "159636.SZ": 31,
+  "513160.SH": 31,
+  "159920.SZ": 68,
+  "513520.SH": 1,
+  "159928.SZ": 41,
+  "513970.SH": 50,
+  "512010.SH": 27,
+  "560080.SH": 50,
+  "512170.SH": 51,
+  "159992.SZ": 50,
+  "513120.SH": 37,
+  "159755.SZ": 30,
+  "515790.SH": 48,
+  "159806.SZ": 46,
+  "159790.SZ": 46,
+  "516110.SH": 28,
+  "512000.SH": 49,
+  "513090.SH": 22,
+  "159851.SZ": 51,
+  "512800.SH": 43,
+  "515220.SH": 34,
+  "159930.SZ": 25,
+  "510880.SH": 51,
+  "518880.SH": 10,
+  "512400.SH": 51,
+  "516780.SH": 36,
+  "512660.SH": 50,
+  "159901.SZ": 100,
+  "159902.SZ": 100,
+  "159781.SZ": 51,
+  "159915.SZ": 100,
+  "510300.SH": 300,
+  "510500.SH": 500,
+  "512630.SH": 127,
+  "512690.SH": 31,
+  "510050.SH": 51,
+};
+
 const ETF_LIST = [
   { etfCode: "588000", etfName: "科创50ETF", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "515070", etfName: "人工智能AIETF", industry: "一、科技行业（含ETF与个股）" },
@@ -496,34 +557,26 @@ const ETF_LIST = [
   { etfCode: "600036", etfName: "招商银行", industry: "六、其他周期（含ETF与个股）" },
   { etfCode: "601166", etfName: "兴业银行", industry: "六、其他周期（含ETF与个股）" },
   { etfCode: "601088", etfName: "中国神华", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "601011", etfName: "宝泰隆", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "600580", etfName: "卧龙电驱", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "000831", etfName: "中国稀土", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "002600", etfName: "领益智造", industry: "六、其他周期（含ETF与个股）" },
   { etfCode: "600111", etfName: "北方稀土", industry: "六、其他周期（含ETF与个股）" },
   { etfCode: "603993", etfName: "洛阳钼业", industry: "六、其他周期（含ETF与个股）" },
   { etfCode: "002716", etfName: "湖南白银", industry: "六、其他周期（含ETF与个股）" },
+  { etfCode: "600580", etfName: "卧龙电驱", industry: "六、其他周期（含ETF与个股）" },
+  { etfCode: "000831", etfName: "中国稀土", industry: "六、其他周期（含ETF与个股）" },
+  { etfCode: "002600", etfName: "领益智造", industry: "六、其他周期（含ETF与个股）" },
+  { etfCode: "510050", etfName: "上证50ETF", industry: "七、宽基金（仅ETF）" },
   { etfCode: "159901", etfName: "深证100ETF", industry: "七、宽基金（仅ETF）" },
   { etfCode: "159902", etfName: "中小100ETF", industry: "七、宽基金（仅ETF）" },
   { etfCode: "159781", etfName: "科创创业ETF", industry: "七、宽基金（仅ETF）" },
   { etfCode: "159915", etfName: "创业板ETF", industry: "七、宽基金（仅ETF）" },
-  { etfCode: "510050", etfName: "上证50ETF", industry: "七、宽基金（仅ETF）" },
   { etfCode: "510300", etfName: "沪深300ETF", industry: "七、宽基金（仅ETF）" },
   { etfCode: "510500", etfName: "中证500ETF", industry: "七、宽基金（仅ETF）" },
   { etfCode: "600141", etfName: "兴发集团", industry: "五、新能源（含ETF与个股）" },
   { etfCode: "688568", etfName: "中科星图", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "002156", etfName: "通富微电", industry: "一、科技行业（含ETF与个股）" },
-  { etfCode: "601011", etfName: "宝泰隆", industry: "六、其他周期（含ETF与个股）" },
+  { etfCode: "601011", etfName: "宝泰隆", industry: "能源" },
 ];
 
-const TRACKED_TOTAL_HOLDINGS = 2835;
-const TRACKED_ETF_COUNT = 50;
-const DEFAULT_MOCK_TOTAL_STOCK_COUNT = Math.floor(TRACKED_TOTAL_HOLDINGS / TRACKED_ETF_COUNT);
-const EXTRA_MOCK_TOTAL_STOCK_COUNT = TRACKED_TOTAL_HOLDINGS % TRACKED_ETF_COUNT;
-
-const ETF_CODE_SET = new Set(
-  ETF_LIST.filter((item) => String(item.etfName || "").includes("ETF")).map((item) => formatExchangeCode(item.etfCode))
-);
+const ETF_CODE_SET = new Set(Object.keys(ETF_CONSTITUENT_COUNTS));
 
 function randomFloat(min, max, decimals = 4) {
   return parseFloat((Math.random() * (max - min) + min).toFixed(decimals));
@@ -545,14 +598,22 @@ function formatDateTime(date) {
   );
 }
 
-function generateStockRecord(etf, index, timeStr) {
+function generateStockRecord(etf, timeStr) {
   const totalScore = randomInt(0, 5);
   const trackedEtf = isTrackedEtfCode(etf.etfCode);
-  const totalStockCount = trackedEtf
-    ? (Math.max(0, Number(etf.totalStockCount) || 0) || DEFAULT_MOCK_TOTAL_STOCK_COUNT + (index < EXTRA_MOCK_TOTAL_STOCK_COUNT ? 1 : 0))
-    : null;
-  const growthStockCount = trackedEtf ? randomInt(0, totalStockCount) : null;
+  const totalStockCount = trackedEtf ? ETF_CONSTITUENT_COUNTS[formatExchangeCode(etf.etfCode)] ?? null : null;
+  const growthStockCount = trackedEtf && totalStockCount !== null ? randomInt(0, totalStockCount) : null;
   const latestPrice = randomFloat(0.8, 8, 3);
+  const greaterThanM5Price = randomBool();
+  const greaterThanM10Price = randomBool();
+  const greaterThanM20Price = randomBool();
+  const greaterThanM0Price = randomBool();
+  const holdStatus = randomBool();
+  const m0Percent = trackedEtf && totalStockCount ? roundNumber(growthStockCount / totalStockCount) : greaterThanM0Price ? 1 : 0;
+  const m5Percent = trackedEtf ? randomFloat(0, 1) : greaterThanM5Price ? 1 : 0;
+  const m10Percent = trackedEtf ? randomFloat(0, 1) : greaterThanM10Price ? 1 : 0;
+  const m20Percent = trackedEtf ? randomFloat(0, 1) : greaterThanM20Price ? 1 : 0;
+  const maMeanRatio = roundNumber((m5Percent + m10Percent + m20Percent) / 3);
 
   return {
     industry: normalizeIndustry(etf.industry),
@@ -561,16 +622,16 @@ function generateStockRecord(etf, index, timeStr) {
     totalScore,
     buySellSignal: totalScore >= 4 ? "BUY" : "SELL",
     createTime: timeStr || formatDateTime(new Date()),
-    greaterThanM5Price: randomBool(),
-    greaterThanM10Price: randomBool(),
-    greaterThanM20Price: randomBool(),
-    greaterThanM0Price: randomBool(),
-    holdStatus: randomBool(),
-    m0Percent: randomFloat(0.02, 0.2),
-    m5Percent: randomFloat(0.02, 0.2),
-    m10Percent: randomFloat(0.02, 0.2),
-    m20Percent: randomFloat(0.02, 0.2),
-    maMeanRatio: randomFloat(0.02, 0.2),
+    greaterThanM5Price,
+    greaterThanM10Price,
+    greaterThanM20Price,
+    greaterThanM0Price,
+    holdStatus,
+    m0Percent,
+    m5Percent,
+    m10Percent,
+    m20Percent,
+    maMeanRatio,
     growthStockCount,
     totalStockCount,
     latestPrice,
@@ -580,8 +641,44 @@ function generateStockRecord(etf, index, timeStr) {
 function generateAllData() {
   const now = new Date();
   const timeStr = formatDateTime(now);
-  const stockDataList = ETF_LIST.map((etf, index) => generateStockRecord(etf, index, timeStr));
+  const stockDataList = ETF_LIST.map((etf) => generateStockRecord(etf, timeStr));
   return createAllDataResponse(stockDataList, timeStr);
+}
+
+function createMockTimeseriesRow(etf) {
+  const trackedEtf = isTrackedEtfCode(etf.etfCode);
+  const totalStockCount = trackedEtf ? ETF_CONSTITUENT_COUNTS[formatExchangeCode(etf.etfCode)] ?? null : null;
+  const growthStockCount = trackedEtf && totalStockCount !== null ? randomInt(0, totalStockCount) : null;
+  const greaterThanM5Price = randomBool();
+  const greaterThanM10Price = randomBool();
+  const greaterThanM20Price = randomBool();
+  const greaterThanM0Price = randomBool();
+  const holdStatus = randomBool();
+  const m0Percent = trackedEtf && totalStockCount ? roundNumber(growthStockCount / totalStockCount) : greaterThanM0Price ? 1 : 0;
+  const m5Percent = trackedEtf ? randomFloat(0, 1) : greaterThanM5Price ? 1 : 0;
+  const m10Percent = trackedEtf ? randomFloat(0, 1) : greaterThanM10Price ? 1 : 0;
+  const m20Percent = trackedEtf ? randomFloat(0, 1) : greaterThanM20Price ? 1 : 0;
+  const maMeanRatio = roundNumber((m5Percent + m10Percent + m20Percent) / 3);
+
+  return {
+    etf_code: etf.etfCode,
+    etf_name: etf.etfName,
+    industry: etf.industry,
+    total_score: randomInt(0, 5),
+    greater_m5: greaterThanM5Price,
+    greater_m10: greaterThanM10Price,
+    greater_m20: greaterThanM20Price,
+    greater_m0: greaterThanM0Price,
+    hold_status: holdStatus,
+    m0_percent: m0Percent,
+    m5_percent: m5Percent,
+    m10_percent: m10Percent,
+    m20_percent: m20Percent,
+    ma_mean_ratio: maMeanRatio,
+    growth_stock_count: growthStockCount,
+    total_stock_count: totalStockCount,
+    close: randomFloat(0.8, 8, 3),
+  };
 }
 
 function generateTimeSeriesData(startTimeStr, endTimeStr, page, size) {
@@ -601,30 +698,9 @@ function generateTimeSeriesData(startTimeStr, endTimeStr, page, size) {
   const safePage = Math.max(1, Math.min(page, totalPages));
   const slicedProducts = ETF_LIST.slice((safePage - 1) * size, safePage * size);
 
-  const productRows = slicedProducts.map((etf, index) => {
+  const productRows = slicedProducts.map((etf) => {
     const timeSeriesData = timeColumns.reduce((acc, tp) => {
-      acc[tp] = createTimeseriesCell(
-        {
-          etf_code: etf.etfCode,
-          etf_name: etf.etfName,
-          industry: etf.industry,
-          total_score: randomInt(0, 5),
-          greater_m5: randomBool(),
-          greater_m10: randomBool(),
-          greater_m20: randomBool(),
-          greater_m0: randomBool(),
-          hold_status: randomBool(),
-          m0_percent: randomFloat(0.02, 0.2),
-          m5_percent: randomFloat(0.02, 0.2),
-          m10_percent: randomFloat(0.02, 0.2),
-          m20_percent: randomFloat(0.02, 0.2),
-          ma_mean_ratio: randomFloat(0.02, 0.2),
-          growth_stock_count: isTrackedEtfCode(etf.etfCode) ? randomInt(0, DEFAULT_MOCK_TOTAL_STOCK_COUNT + (index < EXTRA_MOCK_TOTAL_STOCK_COUNT ? 1 : 0)) : null,
-          total_stock_count: isTrackedEtfCode(etf.etfCode) ? DEFAULT_MOCK_TOTAL_STOCK_COUNT + (index < EXTRA_MOCK_TOTAL_STOCK_COUNT ? 1 : 0) : null,
-          close: randomFloat(0.8, 8, 3),
-        },
-        randomInt(20, 80)
-      );
+      acc[tp] = createTimeseriesCell(createMockTimeseriesRow(etf));
       return acc;
     }, {});
 
