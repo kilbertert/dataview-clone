@@ -74,6 +74,7 @@ const StyleClassGenerator = {
      */
     calculateBuySellSignal(totalScore) {
         if (totalScore === null || totalScore === undefined) return "卖";
+        // 0, 1, 2, 3 = 卖，其余 = 买
         return totalScore >= 4 ? "买" : "卖";
     },
 
@@ -208,6 +209,10 @@ const UIRenderer = {
         }
     },
 
+    formatCount(value) {
+        return value === null || value === undefined ? "-" : value;
+    },
+
     /**
      * 更新最后更新时间
      */
@@ -261,7 +266,7 @@ const UIRenderer = {
       <div class="stat-card ${
           changedStats.has("m5Percent") ? "highlight-stat" : ""
       }">
-        <div class="stat-label">M5占比</div>
+        <div class="stat-label">大盘指数占比</div>
         <div class="stat-value">${m5Percent}%</div>
       </div>
       <div class="stat-card ${
@@ -285,14 +290,14 @@ const UIRenderer = {
       <div class="stat-card ${
           changedStats.has("growthStockCount") ? "highlight-stat" : ""
       }">
-        <div class="stat-label">上涨股数</div>
-        <div class="stat-value">${statistics.growthStockCount}</div>
+        <div class="stat-label">增长股数</div>
+        <div class="stat-value">${this.formatCount(statistics.growthStockCount)}</div>
       </div>
       <div class="stat-card ${
           changedStats.has("totalStockCount") ? "highlight-stat" : ""
       }">
-        <div class="stat-label">成分股总数</div>
-        <div class="stat-value">${statistics.totalStockCount}</div>
+        <div class="stat-label">总股数</div>
+        <div class="stat-value">${this.formatCount(statistics.totalStockCount)}</div>
       </div>
     `;
     },
@@ -312,9 +317,8 @@ const UIRenderer = {
             item.totalScore,
             marketTrend
         );
-        // 根据总分计算买卖信号: 0,1,2=卖，其余=买
-        const buySellSignal = StyleClassGenerator.normalizeBuySellSignal(
-            item.buySellSignal,
+        // 根据总分计算买卖信号: 0,1,2,3=卖，4及以上=买
+        const buySellSignal = StyleClassGenerator.calculateBuySellSignal(
             item.totalScore
         );
         const buySellSignalClass =
@@ -368,8 +372,8 @@ const UIRenderer = {
         )}">
           ${DataFormatter.formatPercent(item.maMeanRatio)}
         </td>
-        <td>${item.growthStockCount || "-"}</td>
-        <td>${item.totalStockCount || "-"}</td>
+        <td>${UIRenderer.formatCount(item.growthStockCount)}</td>
+        <td>${UIRenderer.formatCount(item.totalStockCount)}</td>
       </tr>
     `;
     },

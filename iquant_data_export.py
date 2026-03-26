@@ -16,6 +16,7 @@ UNIVERSE = [
     ("516630", "SH", "云计算50ETF", "科技行业（含ETF与个股）"),
     ("515050", "SH", "5G通信ETF", "科技行业（含ETF与个股）"),
     ("512480", "SH", "半导体ETF", "科技行业（含ETF与个股）"),
+    ("512630", "SH", "半导体芯片ETF", "科技行业（含ETF与个股）"),
     ("512760", "SH", "芯片ETF", "科技行业（含ETF与个股）"),
     ("159869", "SZ", "游戏ETF", "科技行业（含ETF与个股）"),
     ("516620", "SH", "影视ETF", "科技行业（含ETF与个股）"),
@@ -33,7 +34,6 @@ UNIVERSE = [
     ("300308", "SZ", "中际旭创", "科技行业（含ETF与个股）"),
     ("300502", "SZ", "新易盛", "科技行业（含ETF与个股）"),
     ("603019", "SH", "中科曙光", "科技行业（含ETF与个股）"),
-    ("688008", "SH", "澜起科技", "科技行业（含ETF与个股）"),
     ("688111", "SH", "金山办公", "科技行业（含ETF与个股）"),
     ("688256", "SH", "寒武纪-U", "科技行业（含ETF与个股）"),
     ("000938", "SZ", "紫光股份", "科技行业（含ETF与个股）"),
@@ -46,9 +46,12 @@ UNIVERSE = [
     ("002371", "SZ", "北方华创", "科技行业（含ETF与个股）"),
     ("688981", "SH", "中芯国际", "科技行业（含ETF与个股）"),
     ("000062", "SZ", "深圳华强", "科技行业（含ETF与个股）"),
+    ("002156", "SZ", "通富微电", "科技行业（含ETF与个股）"),
     ("002185", "SZ", "华天科技", "科技行业（含ETF与个股）"),
+    ("002436", "SZ", "兴森科技", "科技行业（含ETF与个股）"),
     ("688012", "SH", "中微公司", "科技行业（含ETF与个股）"),
     ("688041", "SH", "海光信息", "科技行业（含ETF与个股）"),
+    ("000156", "SZ", "华数传媒", "科技行业（含ETF与个股）"),
     ("000628", "SZ", "高新发展", "科技行业（含ETF与个股）"),
     ("603501", "SH", "豪威集团", "科技行业（含ETF与个股）"),
     ("002475", "SZ", "立讯精密", "科技行业（含ETF与个股）"),
@@ -57,18 +60,19 @@ UNIVERSE = [
     ("300182", "SZ", "捷成股份", "科技行业（含ETF与个股）"),
     ("300251", "SZ", "光线传媒", "科技行业（含ETF与个股）"),
     ("300413", "SZ", "芒果超媒", "科技行业（含ETF与个股）"),
+    ("300133", "SZ", "华策影视", "科技行业（含ETF与个股）"),
+    ("600633", "SH", "浙数文化", "科技行业（含ETF与个股）"),
     ("600637", "SH", "东方明珠", "科技行业（含ETF与个股）"),
     ("002624", "SZ", "完美世界", "科技行业（含ETF与个股）"),
     ("002739", "SZ", "万达电影", "科技行业（含ETF与个股）"),
+    ("600977", "SH", "中国电影", "科技行业（含ETF与个股）"),
     ("002027", "SZ", "分众传媒", "科技行业（含ETF与个股）"),
     ("002131", "SZ", "利欧股份", "科技行业（含ETF与个股）"),
+    ("002195", "SZ", "岩山科技", "科技行业（含ETF与个股）"),
     ("002517", "SZ", "恺英网络", "科技行业（含ETF与个股）"),
     ("300058", "SZ", "蓝色光标", "科技行业（含ETF与个股）"),
-    ("300766", "SZ", "每日互动", "科技行业（含ETF与个股）"),
-    ("600570", "SZ", "恒生电子", "科技行业（含ETF与个股）"),
-    ("600206", "SH", "有研新材", "科技行业（含ETF与个股）"),
-    ("002241", "SZ", "歌尔股份", "科技行业（含ETF与个股）"),
-    ("300039", "SZ", "润和软件", "科技行业（含ETF与个股）"),
+    ("300339", "SZ", "润和软件", "科技行业（含ETF与个股）"),
+    ("300364", "SZ", "中文在线", "科技行业（含ETF与个股）"),
 
     # 二、香港/国外（含ETF）
     ("513100", "SH", "纳指ETF", "香港/国外（含ETF）"),
@@ -84,7 +88,7 @@ UNIVERSE = [
 
     # 三、消费行业（含ETF与个股）
     ("512690", "SH", "酒ETF", "消费行业（含ETF与个股）"),
-    ("159928", "SZ", "消费ETF", "消费行业（含ETF与个股）"),
+    ("159928", "SZ", "消费ETF159928", "消费行业（含ETF与个股）"),
     ("513970", "SH", "恒生消费ETF", "消费行业（含ETF与个股）"),
     ("600519", "SH", "贵州茅台", "消费行业（含ETF与个股）"),
     ("000858", "SZ", "五粮液", "消费行业（含ETF与个股）"),
@@ -93,10 +97,6 @@ UNIVERSE = [
     ("000596", "SZ", "古井贡酒", "消费行业（含ETF与个股）"),
     ("002304", "SZ", "洋河股份", "消费行业（含ETF与个股）"),
     ("600600", "SH", "青岛啤酒", "消费行业（含ETF与个股）"),
-    ("603369", "SH", "今世缘", "消费行业（含ETF与个股）"),
-    ("603589", "SH", "口子窖", "消费行业（含ETF与个股）"),
-    ("600702", "SH", "舍得酒业", "消费行业（含ETF与个股）"),
-    ("601689", "SH", "拓普集团", "消费行业（含ETF与个股）"),
 
     # 四、医药基金（含ETF与个股）
     ("512010", "SH", "医药ETF", "医药基金（含ETF与个股）"),
@@ -111,7 +111,6 @@ UNIVERSE = [
     ("603259", "SH", "药明康德", "医药基金（含ETF与个股）"),
     ("300015", "SZ", "爱尔眼科", "医药基金（含ETF与个股）"),
     ("300760", "SZ", "迈瑞医疗", "医药基金（含ETF与个股）"),
-    ("688271", "SH", "联影医疗", "医药基金（含ETF与个股）"),
     ("300896", "SZ", "爱美客", "医药基金（含ETF与个股）"),
     ("600276", "SH", "恒瑞医药", "医药基金（含ETF与个股）"),
 
@@ -121,6 +120,7 @@ UNIVERSE = [
     ("159806", "SZ", "新能源车ETF", "新能源（含ETF与个股）"),
     ("159790", "SZ", "碳中和ETF", "新能源（含ETF与个股）"),
     ("516110", "SH", "汽车ETF", "新能源（含ETF与个股）"),
+    ("600141", "SH", "兴发集团", "新能源（含ETF与个股）"),
     ("002466", "SZ", "天齐锂业", "新能源（含ETF与个股）"),
     ("300014", "SZ", "亿纬锂能", "新能源（含ETF与个股）"),
     ("002460", "SZ", "赣锋锂业", "新能源（含ETF与个股）"),
@@ -143,13 +143,6 @@ UNIVERSE = [
     ("600886", "SH", "国投电力", "新能源（含ETF与个股）"),
     ("600732", "SH", "爱旭股份", "新能源（含ETF与个股）"),
     ("002202", "SZ", "金风科技", "新能源（含ETF与个股）"),
-    ("600995", "SH", "南网储能", "新能源（含ETF与个股）"),
-    ("300763", "SZ", "锦浪科技", "新能源（含ETF与个股）"),
-    ("002050", "SZ", "三花智控", "新能源（含ETF与个股）"),
-    ("603799", "SH", "华友钴业", "新能源（含ETF与个股）"),
-    ("002340", "SZ", "格林美", "新能源（含ETF与个股）"),
-    ("300450", "SZ", "先导智能", "新能源（含ETF与个股）"),
-    ("000887", "SZ", "中鼎股份", "新能源（含ETF与个股）"),
 
     # 六、其他周期（含ETF与个股）
     ("512000", "SH", "券商ETF", "其他周期（含ETF与个股）"),
@@ -168,34 +161,22 @@ UNIVERSE = [
     ("600036", "SH", "招商银行", "其他周期（含ETF与个股）"),
     ("601166", "SH", "兴业银行", "其他周期（含ETF与个股）"),
     ("601088", "SH", "中国神华", "其他周期（含ETF与个股）"),
-    ("601225", "SH", "陕西煤业", "其他周期（含ETF与个股）"),
-    ("600157", "SH", "永泰能源", "其他周期（含ETF与个股）"),
-    ("600508", "SH", "上海能源", "其他周期（含ETF与个股）"),
-    ("601899", "SH", "紫金矿业", "其他周期（含ETF与个股）"),
-    ("601600", "SH", "中国铝业", "其他周期（含ETF与个股）"),
-    ("600111", "SH", "北方稀土", "其他周期（含ETF与个股）"),
-    ("603993", "SH", "洛阳钼业", "其他周期（含ETF与个股）"),
-    ("002716", "SZ", "湖南白银", "其他周期（含ETF与个股）"),
+    ("601011", "SH", "宝泰隆", "其他周期（含ETF与个股）"),
     ("600580", "SH", "卧龙电驱", "其他周期（含ETF与个股）"),
     ("000831", "SZ", "中国稀土", "其他周期（含ETF与个股）"),
-    ("002600", "SZ", "领益智造", "其他周期（含ETF与个股）"),
-    ("600150", "SH", "中国船舶", "其他周期（含ETF与个股）"),
-    ("002625", "SZ", "光启技术", "其他周期（含ETF与个股）"),
-    ("002179", "SZ", "中航光电", "其他周期（含ETF与个股）"),
-    ("601989", "SH", "中国重工", "其他周期（含ETF与个股）"),
-    ("600893", "SH", "航发动力", "其他周期（含ETF与个股）"),
 
     # 七、宽基金（仅ETF）
     ("159901", "SZ", "深证100ETF", "宽基金（仅ETF）"),
     ("159902", "SZ", "中小100ETF", "宽基金（仅ETF）"),
     ("159781", "SZ", "科创创业ETF", "宽基金（仅ETF）"),
     ("159915", "SZ", "创业板ETF", "宽基金（仅ETF）"),
+    ("510050", "SH", "上证50ETF", "宽基金（仅ETF）"),
     ("510300", "SH", "沪深300ETF", "宽基金（仅ETF）"),
     ("510500", "SH", "中证500ETF", "宽基金（仅ETF）"),
 ]
 
 # MA periods / timeframe config
-TIMEFRAME_MODE = "minute"
+TIMEFRAME_MODE = "daily"
 TIMEFRAME_CONFIGS = {
     "daily": {
         "period": "1d",
@@ -271,6 +252,12 @@ ETF_CONSTITUENTS = {
 CODE_TO_FULL = dict((code, "{0}.{1}".format(code, mkt)) for code, mkt, _, _ in UNIVERSE)
 ETF_CODES = set(ETF_CONSTITUENTS.keys())
 
+UNRESOLVED_ETF_CONSTITUENTS = {
+    '513520.SH': 'No donor-backed constituent basket found in legacy service scripts; breadth remains 0/0 until a verified Nikkei basket is supplied.',
+}
+
+BREADTH_ELIGIBLE_ETF_CODES = ETF_CODES - set(UNRESOLVED_ETF_CONSTITUENTS.keys())
+
 
 def _get_timeframe_config():
     return TIMEFRAME_CONFIGS.get(TIMEFRAME_MODE, TIMEFRAME_CONFIGS["daily"])
@@ -296,6 +283,7 @@ def _ensure_db(db_path):
             greater_m20      INTEGER,
             greater_m0       INTEGER,
             hold_status      INTEGER,
+            buy_sell_signal  TEXT,
             m0_percent       REAL,
             m5_percent       REAL,
             m10_percent      REAL,
@@ -325,6 +313,7 @@ def _ensure_db(db_path):
             greater_m20      INTEGER,
             greater_m0       INTEGER,
             hold_status      INTEGER,
+            buy_sell_signal  TEXT,
             m0_percent       REAL,
             m5_percent       REAL,
             m10_percent      REAL,
@@ -338,6 +327,18 @@ def _ensure_db(db_path):
     """)
     c.execute("CREATE INDEX IF NOT EXISTS idx_ts_code_time ON timeseries(etf_code, create_time)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_ts_time ON timeseries(create_time)")
+
+    existing_snapshot_columns = set(
+        row[1] for row in c.execute("PRAGMA table_info(latest_snapshot)").fetchall()
+    )
+    if "buy_sell_signal" not in existing_snapshot_columns:
+        c.execute("ALTER TABLE latest_snapshot ADD COLUMN buy_sell_signal TEXT")
+
+    existing_timeseries_columns = set(
+        row[1] for row in c.execute("PRAGMA table_info(timeseries)").fetchall()
+    )
+    if "buy_sell_signal" not in existing_timeseries_columns:
+        c.execute("ALTER TABLE timeseries ADD COLUMN buy_sell_signal TEXT")
 
     conn.commit()
     conn.close()
@@ -432,6 +433,12 @@ def _total_score(row):
     return score
 
 
+def _buy_sell_signal(total_score):
+    if total_score is None:
+        return None
+    return "BUY" if total_score >= 4 else "SELL"
+
+
 def _purge_old_records(conn, days):
     cutoff = time.strftime(
         "%Y-%m-%d %H:%M:%S",
@@ -449,9 +456,10 @@ def _get_constituent_codes(code, mkt):
 
 
 def _get_constituent_statistics(ContextInfo, code, mkt, tf_config):
+    full_code = "{0}.{1}".format(code, mkt)
     constituent_codes = _get_constituent_codes(code, mkt)
     if not constituent_codes:
-        return 0, 0
+        return (None, None) if full_code not in BREADTH_ELIGIBLE_ETF_CODES else (0, 0)
 
     try:
         full_tick = ContextInfo.get_full_tick(constituent_codes)
@@ -479,12 +487,15 @@ def _get_constituent_statistics(ContextInfo, code, mkt, tf_config):
 
 
 def _get_constituent_ma_statistics(ContextInfo, code, mkt, tf_config):
+    full_code = "{0}.{1}".format(code, mkt)
     constituent_codes = _get_constituent_codes(code, mkt)
     windows = tf_config["ma_windows"]
     label_windows = tf_config["label_windows"]
     period = tf_config["period"]
     history_count = max(windows) - 1
     if not constituent_codes:
+        if full_code not in BREADTH_ELIGIBLE_ETF_CODES:
+            return dict((window, None) for window in label_windows), None
         return dict((window, 0.0) for window in label_windows), 0
 
     try:
@@ -579,16 +590,29 @@ def handlebar(ContextInfo):
             greater_m20 = current_close > m20 if m20 else False
             greater_m0 = current_close > compare_price if compare_price else False
 
-            rise_count, total_count = _get_constituent_statistics(ContextInfo, code, mkt, tf_config)
-            ma_percents, ma_total_count = _get_constituent_ma_statistics(ContextInfo, code, mkt, tf_config)
-            if ma_total_count:
-                total_count = ma_total_count
+            if full_code in ETF_CODES:
+                rise_count, total_count = _get_constituent_statistics(ContextInfo, code, mkt, tf_config)
+                ma_percents, ma_total_count = _get_constituent_ma_statistics(ContextInfo, code, mkt, tf_config)
+                if ma_total_count is not None:
+                    total_count = ma_total_count
 
-            m5_pct = ma_percents.get(5, 0.0)
-            m10_pct = ma_percents.get(10, 0.0)
-            m20_pct = ma_percents.get(20, 0.0)
-            m0_pct = round(rise_count / total_count, 4) if total_count else 0.0
-            ma_mean_ratio = round((m5_pct + m10_pct + m20_pct) / 3, 4) if total_count else 0.0
+                m5_pct = ma_percents.get(5)
+                m10_pct = ma_percents.get(10)
+                m20_pct = ma_percents.get(20)
+                m0_pct = round(rise_count / total_count, 4) if total_count else (0.0 if total_count == 0 else None)
+                ma_mean_ratio = (
+                    round((m5_pct + m10_pct + m20_pct) / 3, 4)
+                    if total_count and None not in (m5_pct, m10_pct, m20_pct)
+                    else (0.0 if total_count == 0 else None)
+                )
+            else:
+                rise_count = None
+                total_count = None
+                m0_pct = 1.0 if greater_m0 else 0.0
+                m5_pct = 1.0 if greater_m5 else 0.0
+                m10_pct = 1.0 if greater_m10 else 0.0
+                m20_pct = 1.0 if greater_m20 else 0.0
+                ma_mean_ratio = round((m5_pct + m10_pct + m20_pct) / 3.0, 4)
 
             row = {
                 "etf_code":    code,
@@ -614,6 +638,7 @@ def handlebar(ContextInfo):
                 "create_time": now_str,
             }
             row["total_score"] = _total_score(row)
+            row["buy_sell_signal"] = _buy_sell_signal(row["total_score"])
             rows.append(row)
 
         except Exception as e:
@@ -630,7 +655,7 @@ def handlebar(ContextInfo):
             "etf_code", "etf_name", "industry", "close",
             "m5", "m10", "m20", "m0",
             "greater_m5", "greater_m10", "greater_m20", "greater_m0",
-            "hold_status", "m0_percent", "m5_percent", "m10_percent",
+            "hold_status", "buy_sell_signal", "m0_percent", "m5_percent", "m10_percent",
             "m20_percent", "ma_mean_ratio", "growth_stock_count",
             "total_stock_count", "total_score", "create_time",
         ]

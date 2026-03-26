@@ -35,7 +35,8 @@ const TimeSeriesFormatter = {
     },
 
     formatBoolean(value) {
-        return CommonFormatter.formatBooleanPercent(value);
+        if (value === null || value === undefined) return "-";
+        return value ? "是" : "否";
     },
 
     /**
@@ -43,6 +44,7 @@ const TimeSeriesFormatter = {
      */
     calculateBuySellSignal(totalScore) {
         if (totalScore === null || totalScore === undefined) return "卖";
+        // 0, 1, 2, 3 = 卖，其余 = 买
         return totalScore >= 4 ? "买" : "卖";
     },
 
@@ -140,8 +142,8 @@ const TimeSeriesUIRenderer = {
                 const record = product.timeSeriesData?.[tp];
                 if (!record) return `<td class="data-cell"><div class="data-cell-compact"><span style="color:#ccc">-</span></div></td>`;
 
-                const signal = TimeSeriesFormatter.formatBuySellSignal(
-                    record.buySellSignal || TimeSeriesFormatter.calculateBuySellSignal(record.totalScore)
+                const signal = TimeSeriesFormatter.calculateBuySellSignal(
+                    record.totalScore
                 );
                 const signalClass = TimeSeriesFormatter.getSignalClass(signal);
                 const scoreClass = TimeSeriesFormatter.getScoreClass(record.totalScore);
