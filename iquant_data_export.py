@@ -276,9 +276,7 @@ for _constituent_list in ETF_CONSTITUENTS.values():
         if _constituent_code.endswith(('.SH', '.SZ')) and _constituent_code[:1] in ('1', '5'):
             FUND_LIKE_NON_TRACKED_CODES.add(_constituent_code)
 
-UNRESOLVED_ETF_CONSTITUENTS = {
-    '513520.SH': 'No donor-backed constituent basket found in legacy service scripts; breadth remains 0/0 until a verified Nikkei basket is supplied.',
-}
+UNRESOLVED_ETF_CONSTITUENTS = {}
 
 BREADTH_ELIGIBLE_ETF_CODES = ETF_CODES - set(UNRESOLVED_ETF_CONSTITUENTS.keys())
 
@@ -315,6 +313,7 @@ def _ensure_db(db_path):
             ma_mean_ratio    REAL,
             growth_stock_count  INTEGER,
             total_stock_count   INTEGER,
+            valid_stock_count   INTEGER,
             total_score      INTEGER,
             create_time      TEXT
         )
@@ -345,6 +344,7 @@ def _ensure_db(db_path):
             ma_mean_ratio    REAL,
             growth_stock_count  INTEGER,
             total_stock_count   INTEGER,
+            valid_stock_count   INTEGER,
             total_score      INTEGER,
             create_time      TEXT
         )
@@ -357,12 +357,16 @@ def _ensure_db(db_path):
     )
     if "buy_sell_signal" not in existing_snapshot_columns:
         c.execute("ALTER TABLE latest_snapshot ADD COLUMN buy_sell_signal TEXT")
+    if "valid_stock_count" not in existing_snapshot_columns:
+        c.execute("ALTER TABLE latest_snapshot ADD COLUMN valid_stock_count INTEGER")
 
     existing_timeseries_columns = set(
         row[1] for row in c.execute("PRAGMA table_info(timeseries)").fetchall()
     )
     if "buy_sell_signal" not in existing_timeseries_columns:
         c.execute("ALTER TABLE timeseries ADD COLUMN buy_sell_signal TEXT")
+    if "valid_stock_count" not in existing_timeseries_columns:
+        c.execute("ALTER TABLE timeseries ADD COLUMN valid_stock_count INTEGER")
 
     conn.commit()
     conn.close()
@@ -483,18 +487,31 @@ def _get_constituent_codes(code, mkt):
     ]
 
 
+def _get_fixed_constituent_total(code, mkt):
+    return len(_get_constituent_codes(code, mkt))
+
+
 def _get_constituent_statistics(ContextInfo, code, mkt, tf_config):
     full_code = "{0}.{1}".format(code, mkt)
     constituent_codes = _get_constituent_codes(code, mkt)
     if not constituent_codes:
-        return (None, None) if full_code not in BREADTH_ELIGIBLE_ETF_CODES else (0, 0)
+        return {
+            "rise_count": None,
+            "fixed_total_count": None,
+            "valid_sample_count": None,
+        } if full_code not in BREADTH_ELIGIBLE_ETF_CODES else {
+            "rise_count": 0,
+            "fixed_total_count": 0,
+            "valid_sample_count": 0,
+        }
 
     try:
         full_tick = ContextInfo.get_full_tick(constituent_codes)
     except Exception:
         full_tick = {}
 
-    total_count = 0
+    fixed_total_count = _get_fixed_constituent_total(code, mkt)
+    valid_sample_count = 0
     rise_count = 0
     lookback_minutes = tf_config.get("m0_lookback_minutes", 0)
     for stock_code in constituent_codes:
@@ -507,11 +524,18 @@ def _get_constituent_statistics(ContextInfo, code, mkt, tf_config):
             continue
 
         compare_price = _get_lookback_price(ContextInfo, stock_code, tick, lookback_minutes)
-        total_count += 1
+        if compare_price is None:
+            continue
+
+        valid_sample_count += 1
         if last_price > compare_price:
             rise_count += 1
 
-    return rise_count, total_count
+    return {
+        "rise_count": rise_count,
+        "fixed_total_count": fixed_total_count,
+        "valid_sample_count": valid_sample_count,
+    }
 
 
 def _get_constituent_ma_statistics(ContextInfo, code, mkt, tf_config):
@@ -523,15 +547,24 @@ def _get_constituent_ma_statistics(ContextInfo, code, mkt, tf_config):
     history_count = max(windows) - 1
     if not constituent_codes:
         if full_code not in BREADTH_ELIGIBLE_ETF_CODES:
-            return dict((window, None) for window in label_windows), None
-        return dict((window, 0.0) for window in label_windows), 0
+            return {
+                "percents": dict((window, None) for window in label_windows),
+                "fixed_total_count": None,
+                "valid_sample_count": None,
+            }
+        return {
+            "percents": dict((window, 0.0) for window in label_windows),
+            "fixed_total_count": 0,
+            "valid_sample_count": 0,
+        }
 
     try:
         full_tick = ContextInfo.get_full_tick(constituent_codes)
     except Exception:
         full_tick = {}
 
-    total_count = 0
+    fixed_total_count = _get_fixed_constituent_total(code, mkt)
+    valid_sample_count = 0
     rise_counts = dict((window, 0) for window in label_windows)
 
     for stock_code in constituent_codes:
@@ -544,8 +577,11 @@ def _get_constituent_ma_statistics(ContextInfo, code, mkt, tf_config):
         except Exception:
             continue
 
-        total_count += 1
         closes = _get_history_closes(ContextInfo, stock_code, period, history_count)
+        if not closes:
+            continue
+
+        valid_sample_count += 1
 
         for label_window, actual_window in zip(label_windows, windows):
             req = actual_window - 1
@@ -562,9 +598,13 @@ def _get_constituent_ma_statistics(ContextInfo, code, mkt, tf_config):
 
     percents = {}
     for window in label_windows:
-        percents[window] = round(rise_counts[window] / total_count, 4) if total_count else 0.0
+        percents[window] = round(rise_counts[window] / fixed_total_count, 4) if fixed_total_count else 0.0
 
-    return percents, total_count
+    return {
+        "percents": percents,
+        "fixed_total_count": fixed_total_count,
+        "valid_sample_count": valid_sample_count,
+    }
 
 
 def init(ContextInfo):
@@ -619,10 +659,13 @@ def handlebar(ContextInfo):
             greater_m0 = current_close > compare_price if compare_price else False
 
             if full_code in ETF_CODES:
-                rise_count, total_count = _get_constituent_statistics(ContextInfo, code, mkt, tf_config)
-                ma_percents, ma_total_count = _get_constituent_ma_statistics(ContextInfo, code, mkt, tf_config)
-                if ma_total_count is not None:
-                    total_count = ma_total_count
+                constituent_stats = _get_constituent_statistics(ContextInfo, code, mkt, tf_config)
+                ma_stats = _get_constituent_ma_statistics(ContextInfo, code, mkt, tf_config)
+
+                rise_count = constituent_stats["rise_count"]
+                total_count = constituent_stats["fixed_total_count"]
+                valid_stock_count = constituent_stats["valid_sample_count"]
+                ma_percents = ma_stats["percents"]
 
                 m5_pct = ma_percents.get(5)
                 m10_pct = ma_percents.get(10)
@@ -630,12 +673,13 @@ def handlebar(ContextInfo):
                 m0_pct = round(rise_count / total_count, 4) if total_count else (0.0 if total_count == 0 else None)
                 ma_mean_ratio = (
                     round((m5_pct + m10_pct + m20_pct) / 3, 4)
-                    if total_count and None not in (m5_pct, m10_pct, m20_pct)
-                    else (0.0 if total_count == 0 else None)
+                    if total_count is not None and None not in (m5_pct, m10_pct, m20_pct)
+                    else None
                 )
             else:
                 rise_count = None
                 total_count = None
+                valid_stock_count = None
                 m0_pct = 1.0 if greater_m0 else 0.0
                 m5_pct = 1.0 if greater_m5 else 0.0
                 m10_pct = 1.0 if greater_m10 else 0.0
@@ -663,6 +707,7 @@ def handlebar(ContextInfo):
                 "ma_mean_ratio": ma_mean_ratio,
                 "growth_stock_count": rise_count,
                 "total_stock_count":  total_count,
+                "valid_stock_count": valid_stock_count,
                 "create_time": now_str,
             }
             row["total_score"] = _total_score(row)
@@ -685,7 +730,7 @@ def handlebar(ContextInfo):
             "greater_m5", "greater_m10", "greater_m20", "greater_m0",
             "hold_status", "buy_sell_signal", "m0_percent", "m5_percent", "m10_percent",
             "m20_percent", "ma_mean_ratio", "growth_stock_count",
-            "total_stock_count", "total_score", "create_time",
+            "total_stock_count", "valid_stock_count", "total_score", "create_time",
         ]
         placeholders = ", ".join(["?"] * len(cols))
         col_names    = ", ".join(cols)

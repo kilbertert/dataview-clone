@@ -113,40 +113,41 @@ function roundNumber(value, decimals = 4) {
   return parseFloat(Number(value).toFixed(decimals));
 }
 
-function normalizeCountPair(stockCode, totalValue, growthValue, fallbackRatio) {
+function normalizeInteger(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return null;
+  return Math.max(0, Math.trunc(numeric));
+}
+
+function normalizeCountPair(stockCode, totalValue, growthValue) {
   if (!isTrackedEtfCode(stockCode)) {
     return { totalStockCount: null, growthStockCount: null };
   }
 
-  const fallbackTotalCount = ETF_CONSTITUENT_COUNTS[formatExchangeCode(stockCode)] ?? null;
-  const rawTotal = totalValue;
-  const rawGrowth = growthValue;
-  const hasTotal = rawTotal !== null && rawTotal !== undefined && rawTotal !== "";
-  const hasGrowth = rawGrowth !== null && rawGrowth !== undefined && rawGrowth !== "";
-
-  const totalStockCount = hasTotal
-    ? Math.max(0, Number(rawTotal) || 0)
-    : fallbackTotalCount;
-
-  if (totalStockCount === null || totalStockCount === undefined) {
+  const totalStockCount = normalizeInteger(totalValue);
+  if (totalStockCount === null) {
     return { totalStockCount: null, growthStockCount: null };
   }
 
-  const growthStockCount = hasGrowth
-    ? Math.min(totalStockCount, Math.max(0, Number(rawGrowth) || 0))
-    : Math.min(totalStockCount, Math.max(0, Math.round((Number(fallbackRatio) || 0) * totalStockCount)));
-
-  return { totalStockCount, growthStockCount };
+  const growthStockCount = normalizeInteger(growthValue);
+  return {
+    totalStockCount,
+    growthStockCount: growthStockCount === null ? null : Math.min(totalStockCount, growthStockCount),
+  };
 }
 
 function mapSnapshotRow(row) {
   const stockCode = row.etf_code ?? row.etfCode ?? row.stock_code ?? row.stockCode;
+  const isEtf = isTrackedEtfCode(stockCode);
   const { totalStockCount, growthStockCount } = normalizeCountPair(
     stockCode,
     row.total_stock_count ?? row.totalStockCount,
-    row.growth_stock_count ?? row.growthStockCount,
-    row.m5_percent ?? row.m5Percent
+    row.growth_stock_count ?? row.growthStockCount
   );
+  const validStockCount = isEtf
+    ? normalizeInteger(row.valid_stock_count ?? row.validStockCount)
+    : null;
   const totalScore = row.total_score ?? row.totalScore ?? null;
   const buySellSignal = normalizeSignal(
     row.buy_sell_signal
@@ -177,6 +178,7 @@ function mapSnapshotRow(row) {
     maMeanRatio: roundNumber(row.ma_mean_ratio ?? row.maMeanRatio),
     growthStockCount,
     totalStockCount,
+    validStockCount,
     latestPrice: row.close ?? row.latestPrice ?? null,
     createTime,
     updateTime: createTime,
@@ -186,18 +188,18 @@ function mapSnapshotRow(row) {
 function buildStatistics(stockDataList, lastUpdateTime) {
   const list = Array.isArray(stockDataList) ? stockDataList : [];
   const aggregated = list.reduce((acc, item) => {
-    const totalStockCount = item.totalStockCount === null || item.totalStockCount === undefined
-      ? null
-      : Math.max(0, Number(item.totalStockCount) || 0);
-    const growthStockCount = totalStockCount === null
-      ? null
-      : Math.min(totalStockCount, Math.max(0, Number(item.growthStockCount) || 0));
-
-    if (totalStockCount === null) {
+    if (!isTrackedEtfCode(item.etfCode)) {
       return acc;
     }
 
-    acc.growthStockCount += growthStockCount;
+    const totalStockCount = normalizeInteger(item.totalStockCount);
+    const growthStockCount = normalizeInteger(item.growthStockCount);
+
+    if (totalStockCount === null || growthStockCount === null) {
+      return acc;
+    }
+
+    acc.growthStockCount += Math.min(growthStockCount, totalStockCount);
     acc.totalStockCount += totalStockCount;
     acc.m5Weighted += (Number(item.m5Percent) || 0) * totalStockCount;
     acc.m10Weighted += (Number(item.m10Percent) || 0) * totalStockCount;
@@ -265,6 +267,7 @@ function createTimeseriesCell(row) {
     maMeanRatio: mapped.maMeanRatio,
     growthStockCount: mapped.growthStockCount,
     totalStockCount: mapped.totalStockCount,
+    validStockCount: mapped.validStockCount,
     latestPrice: mapped.latestPrice,
   };
 }
@@ -352,60 +355,7 @@ const ROOT_DIR = path.resolve(__dirname);
 // Matches 目标股票池.md and UNIVERSE in iquant_data_export.py
 const TARGET_POOL_COUNT = 164;
 
-const ETF_CONSTITUENT_COUNTS = {
-  "588000.SH": 49,
-  "515070.SH": 49,
-  "516630.SH": 50,
-  "515050.SH": 46,
-  "512480.SH": 94,
-  "512760.SH": 49,
-  "159869.SZ": 30,
-  "516620.SH": 34,
-  "512980.SH": 50,
-  "562500.SH": 49,
-  "159807.SZ": 33,
-  "562910.SH": 48,
-  "513100.SH": 0,
-  "513130.SH": 0,
-  "513330.SH": 30,
-  "513050.SH": 7,
-  "159792.SZ": 29,
-  "513180.SH": 23,
-  "159636.SZ": 30,
-  "513160.SH": 30,
-  "159920.SZ": 66,
-  "513520.SH": null,
-  "159928.SZ": 40,
-  "513970.SH": 49,
-  "512010.SH": 26,
-  "560080.SH": 49,
-  "512170.SH": 50,
-  "159992.SZ": 49,
-  "513120.SH": 36,
-  "159755.SZ": 29,
-  "515790.SH": 47,
-  "159806.SZ": 45,
-  "159790.SZ": 45,
-  "516110.SH": 27,
-  "512000.SH": 48,
-  "513090.SH": 21,
-  "159851.SZ": 50,
-  "512800.SH": 42,
-  "515220.SH": 33,
-  "159930.SZ": 24,
-  "510880.SH": 50,
-  "518880.SH": 0,
-  "512400.SH": 50,
-  "516780.SH": 35,
-  "512660.SH": 49,
-  "159901.SZ": 100,
-  "159902.SZ": 99,
-  "159781.SZ": 50,
-  "159915.SZ": 99,
-  "510300.SH": 298,
-  "510500.SH": 499,
-};
-
+// ETF universe sourced from target pool metadata. Fixed constituent counts now come from export data / DB, not server-side handwritten mappings.
 const ETF_LIST = [
   { etfCode: "588000", etfName: "科创50ETF", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "515070", etfName: "人工智能AIETF", industry: "一、科技行业（含ETF与个股）" },
@@ -573,7 +523,11 @@ const ETF_LIST = [
   { etfCode: "601011", etfName: "宝泰隆", industry: "能源" },
 ];
 
-const ETF_CODE_SET = new Set(Object.keys(ETF_CONSTITUENT_COUNTS));
+const ETF_CODE_SET = new Set(
+  ETF_LIST
+    .filter((item) => String(item.etfName || "").includes("ETF"))
+    .map((item) => formatExchangeCode(item.etfCode))
+);
 
 function randomFloat(min, max, decimals = 4) {
   return parseFloat((Math.random() * (max - min) + min).toFixed(decimals));
@@ -598,8 +552,9 @@ function formatDateTime(date) {
 function generateStockRecord(etf, timeStr) {
   const totalScore = randomInt(0, 5);
   const trackedEtf = isTrackedEtfCode(etf.etfCode);
-  const totalStockCount = trackedEtf ? ETF_CONSTITUENT_COUNTS[formatExchangeCode(etf.etfCode)] ?? null : null;
+  const totalStockCount = trackedEtf ? randomInt(10, 500) : null;
   const growthStockCount = trackedEtf && totalStockCount !== null ? randomInt(0, totalStockCount) : null;
+  const validStockCount = trackedEtf && totalStockCount !== null ? randomInt(growthStockCount, totalStockCount) : null;
   const latestPrice = randomFloat(0.8, 8, 3);
   const greaterThanM5Price = randomBool();
   const greaterThanM10Price = randomBool();
@@ -631,6 +586,7 @@ function generateStockRecord(etf, timeStr) {
     maMeanRatio,
     growthStockCount,
     totalStockCount,
+    validStockCount,
     latestPrice,
   };
 }
@@ -644,8 +600,9 @@ function generateAllData() {
 
 function createMockTimeseriesRow(etf) {
   const trackedEtf = isTrackedEtfCode(etf.etfCode);
-  const totalStockCount = trackedEtf ? ETF_CONSTITUENT_COUNTS[formatExchangeCode(etf.etfCode)] ?? null : null;
+  const totalStockCount = trackedEtf ? randomInt(10, 500) : null;
   const growthStockCount = trackedEtf && totalStockCount !== null ? randomInt(0, totalStockCount) : null;
+  const validStockCount = trackedEtf && totalStockCount !== null ? randomInt(growthStockCount, totalStockCount) : null;
   const greaterThanM5Price = randomBool();
   const greaterThanM10Price = randomBool();
   const greaterThanM20Price = randomBool();
@@ -674,6 +631,7 @@ function createMockTimeseriesRow(etf) {
     ma_mean_ratio: maMeanRatio,
     growth_stock_count: growthStockCount,
     total_stock_count: totalStockCount,
+    valid_stock_count: validStockCount,
     close: randomFloat(0.8, 8, 3),
   };
 }
