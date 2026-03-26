@@ -218,7 +218,7 @@ function buildStatistics(stockDataList, lastUpdateTime) {
 
   return {
     lastUpdateTime,
-    dataCount: list.length,
+    dataCount: TARGET_POOL_COUNT,
     marketTrend,
     m5Percent: roundNumber(m5Percent),
     m10Percent: roundNumber(m10Percent),
@@ -344,14 +344,17 @@ const ROOT_DIR = path.resolve(__dirname);
 
 // ─── Mock Data ──────────────────────────────────────────────────────────────
 
-// Full stock universe: 169 securities across 7 sectors
-// Matches UNIVERSE in iquant_data_export.py (BIT-33 comment b14a3b96)
+// Full stock universe: 164 securities across 7 sectors
+// Matches 目标股票池.md and UNIVERSE in iquant_data_export.py
+const TARGET_POOL_COUNT = 164;
+
 const ETF_LIST = [
   { etfCode: "588000", etfName: "科创50ETF", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "515070", etfName: "人工智能AIETF", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "516630", etfName: "云计算50ETF", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "515050", etfName: "5G通信ETF", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "512480", etfName: "半导体ETF", industry: "一、科技行业（含ETF与个股）" },
+  { etfCode: "512630", etfName: "半导体芯片ETF", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "512760", etfName: "芯片ETF", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "159869", etfName: "游戏ETF", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "516620", etfName: "影视ETF", industry: "一、科技行业（含ETF与个股）" },
@@ -360,16 +363,16 @@ const ETF_LIST = [
   { etfCode: "159807", etfName: "科技ETF", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "562910", etfName: "高端制造ETF", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "688229", etfName: "博睿数据", industry: "一、科技行业（含ETF与个股）" },
+  { etfCode: "300339", etfName: "润和软件", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "300418", etfName: "昆仑万维", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "002558", etfName: "巨人网络", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "002555", etfName: "三七互娱", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "300002", etfName: "神州泰岳", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "002415", etfName: "海康威视", industry: "一、科技行业（含ETF与个股）" },
-  { etfCode: "600986", etfName: "浙文互娱", industry: "一、科技行业（含ETF与个股）" },
+  { etfCode: "600986", etfName: "浙文互联", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "300308", etfName: "中际旭创", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "300502", etfName: "新易盛", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "603019", etfName: "中科曙光", industry: "一、科技行业（含ETF与个股）" },
-  { etfCode: "688008", etfName: "澜起科技", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "688111", etfName: "金山办公", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "688256", etfName: "寒武纪-U", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "000938", etfName: "紫光股份", industry: "一、科技行业（含ETF与个股）" },
@@ -396,15 +399,20 @@ const ETF_LIST = [
   { etfCode: "600637", etfName: "东方明珠", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "002624", etfName: "完美世界", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "002739", etfName: "万达电影", industry: "一、科技行业（含ETF与个股）" },
+  { etfCode: "300364", etfName: "中文在线", industry: "一、科技行业（含ETF与个股）" },
+  { etfCode: "000156", etfName: "华数传媒", industry: "一、科技行业（含ETF与个股）" },
+  { etfCode: "600977", etfName: "中国电影", industry: "一、科技行业（含ETF与个股）" },
+  { etfCode: "300133", etfName: "华策影视", industry: "一、科技行业（含ETF与个股）" },
+  { etfCode: "002195", etfName: "岩山科技", industry: "一、科技行业（含ETF与个股）" },
+  { etfCode: "600633", etfName: "浙数文化", industry: "一、科技行业（含ETF与个股）" },
+  { etfCode: "002436", etfName: "兴森科技", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "002027", etfName: "分众传媒", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "002131", etfName: "利欧股份", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "002517", etfName: "恺英网络", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "300058", etfName: "蓝色光标", industry: "一、科技行业（含ETF与个股）" },
-  { etfCode: "300766", etfName: "每日互动", industry: "一、科技行业（含ETF与个股）" },
-  { etfCode: "600570", etfName: "恒生电子", industry: "一、科技行业（含ETF与个股）" },
+  { etfCode: "002156", etfName: "通富微电", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "600206", etfName: "有研新材", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "002241", etfName: "歌尔股份", industry: "一、科技行业（含ETF与个股）" },
-  { etfCode: "300039", etfName: "润和软件", industry: "一、科技行业（含ETF与个股）" },
   { etfCode: "513100", etfName: "纳指ETF", industry: "二、香港/国外（含ETF）" },
   { etfCode: "513130", etfName: "恒生互联网ETF", industry: "二、香港/国外（含ETF）" },
   { etfCode: "513330", etfName: "恒生互联网ETF", industry: "二、香港/国外（含ETF）" },
@@ -416,18 +424,15 @@ const ETF_LIST = [
   { etfCode: "159920", etfName: "恒生ETF", industry: "二、香港/国外（含ETF）" },
   { etfCode: "513520", etfName: "日经ETF", industry: "二、香港/国外（含ETF）" },
   { etfCode: "512690", etfName: "酒ETF", industry: "三、消费行业（含ETF与个股）" },
-  { etfCode: "159928", etfName: "消费ETF", industry: "三、消费行业（含ETF与个股）" },
+  { etfCode: "159928", etfName: "消费ETF159928", industry: "三、消费行业（含ETF与个股）" },
   { etfCode: "513970", etfName: "恒生消费ETF", industry: "三、消费行业（含ETF与个股）" },
   { etfCode: "600519", etfName: "贵州茅台", industry: "三、消费行业（含ETF与个股）" },
-  { etfCode: "000858", etfName: "五粮液", industry: "三、消费行业（含ETF与个股）" },
+  { etfCode: "000858", etfName: "五 粮 液", industry: "三、消费行业（含ETF与个股）" },
   { etfCode: "000568", etfName: "泸州老窖", industry: "三、消费行业（含ETF与个股）" },
   { etfCode: "600809", etfName: "山西汾酒", industry: "三、消费行业（含ETF与个股）" },
   { etfCode: "000596", etfName: "古井贡酒", industry: "三、消费行业（含ETF与个股）" },
   { etfCode: "002304", etfName: "洋河股份", industry: "三、消费行业（含ETF与个股）" },
   { etfCode: "600600", etfName: "青岛啤酒", industry: "三、消费行业（含ETF与个股）" },
-  { etfCode: "603369", etfName: "今世缘", industry: "三、消费行业（含ETF与个股）" },
-  { etfCode: "603589", etfName: "口子窖", industry: "三、消费行业（含ETF与个股）" },
-  { etfCode: "600702", etfName: "舍得酒业", industry: "三、消费行业（含ETF与个股）" },
   { etfCode: "601689", etfName: "拓普集团", industry: "三、消费行业（含ETF与个股）" },
   { etfCode: "512010", etfName: "医药ETF", industry: "四、医药基金（含ETF与个股）" },
   { etfCode: "560080", etfName: "中药ETF", industry: "四、医药基金（含ETF与个股）" },
@@ -441,7 +446,6 @@ const ETF_LIST = [
   { etfCode: "603259", etfName: "药明康德", industry: "四、医药基金（含ETF与个股）" },
   { etfCode: "300015", etfName: "爱尔眼科", industry: "四、医药基金（含ETF与个股）" },
   { etfCode: "300760", etfName: "迈瑞医疗", industry: "四、医药基金（含ETF与个股）" },
-  { etfCode: "688271", etfName: "联影医疗", industry: "四、医药基金（含ETF与个股）" },
   { etfCode: "300896", etfName: "爱美客", industry: "四、医药基金（含ETF与个股）" },
   { etfCode: "600276", etfName: "恒瑞医药", industry: "四、医药基金（含ETF与个股）" },
   { etfCode: "159755", etfName: "电池ETF", industry: "五、新能源（含ETF与个股）" },
@@ -468,10 +472,10 @@ const ETF_LIST = [
   { etfCode: "601877", etfName: "正泰电器", industry: "五、新能源（含ETF与个股）" },
   { etfCode: "600900", etfName: "长江电力", industry: "五、新能源（含ETF与个股）" },
   { etfCode: "601985", etfName: "中国核电", industry: "五、新能源（含ETF与个股）" },
+  { etfCode: "600141", etfName: "兴发集团", industry: "五、新能源（含ETF与个股）" },
   { etfCode: "600886", etfName: "国投电力", industry: "五、新能源（含ETF与个股）" },
   { etfCode: "600732", etfName: "爱旭股份", industry: "五、新能源（含ETF与个股）" },
   { etfCode: "002202", etfName: "金风科技", industry: "五、新能源（含ETF与个股）" },
-  { etfCode: "600995", etfName: "南网储能", industry: "五、新能源（含ETF与个股）" },
   { etfCode: "300763", etfName: "锦浪科技", industry: "五、新能源（含ETF与个股）" },
   { etfCode: "002050", etfName: "三花智控", industry: "五、新能源（含ETF与个股）" },
   { etfCode: "603799", etfName: "华友钴业", industry: "五、新能源（含ETF与个股）" },
@@ -494,29 +498,30 @@ const ETF_LIST = [
   { etfCode: "600036", etfName: "招商银行", industry: "六、其他周期（含ETF与个股）" },
   { etfCode: "601166", etfName: "兴业银行", industry: "六、其他周期（含ETF与个股）" },
   { etfCode: "601088", etfName: "中国神华", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "601225", etfName: "陕西煤业", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "600157", etfName: "永泰能源", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "600508", etfName: "上海能源", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "601899", etfName: "紫金矿业", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "601600", etfName: "中国铝业", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "600111", etfName: "北方稀土", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "603993", etfName: "洛阳钼业", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "002716", etfName: "湖南白银", industry: "六、其他周期（含ETF与个股）" },
+  { etfCode: "601011", etfName: "宝泰隆", industry: "六、其他周期（含ETF与个股）" },
   { etfCode: "600580", etfName: "卧龙电驱", industry: "六、其他周期（含ETF与个股）" },
   { etfCode: "000831", etfName: "中国稀土", industry: "六、其他周期（含ETF与个股）" },
   { etfCode: "002600", etfName: "领益智造", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "600150", etfName: "中国船舶", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "002625", etfName: "光启技术", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "002179", etfName: "中航光电", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "601989", etfName: "中国重工", industry: "六、其他周期（含ETF与个股）" },
-  { etfCode: "600893", etfName: "航发动力", industry: "六、其他周期（含ETF与个股）" },
+  { etfCode: "600111", etfName: "北方稀土", industry: "六、其他周期（含ETF与个股）" },
+  { etfCode: "603993", etfName: "洛阳钼业", industry: "六、其他周期（含ETF与个股）" },
+  { etfCode: "002716", etfName: "湖南白银", industry: "六、其他周期（含ETF与个股）" },
   { etfCode: "159901", etfName: "深证100ETF", industry: "七、宽基金（仅ETF）" },
   { etfCode: "159902", etfName: "中小100ETF", industry: "七、宽基金（仅ETF）" },
   { etfCode: "159781", etfName: "科创创业ETF", industry: "七、宽基金（仅ETF）" },
   { etfCode: "159915", etfName: "创业板ETF", industry: "七、宽基金（仅ETF）" },
+  { etfCode: "510050", etfName: "上证50ETF", industry: "七、宽基金（仅ETF）" },
   { etfCode: "510300", etfName: "沪深300ETF", industry: "七、宽基金（仅ETF）" },
   { etfCode: "510500", etfName: "中证500ETF", industry: "七、宽基金（仅ETF）" },
+  { etfCode: "600141", etfName: "兴发集团", industry: "五、新能源（含ETF与个股）" },
+  { etfCode: "688568", etfName: "中科星图", industry: "一、科技行业（含ETF与个股）" },
+  { etfCode: "002156", etfName: "通富微电", industry: "一、科技行业（含ETF与个股）" },
+  { etfCode: "601011", etfName: "宝泰隆", industry: "六、其他周期（含ETF与个股）" },
 ];
+
+const TRACKED_TOTAL_HOLDINGS = 2835;
+const TRACKED_ETF_COUNT = 50;
+const DEFAULT_MOCK_TOTAL_STOCK_COUNT = Math.floor(TRACKED_TOTAL_HOLDINGS / TRACKED_ETF_COUNT);
+const EXTRA_MOCK_TOTAL_STOCK_COUNT = TRACKED_TOTAL_HOLDINGS % TRACKED_ETF_COUNT;
 
 const ETF_CODE_SET = new Set(
   ETF_LIST.filter((item) => String(item.etfName || "").includes("ETF")).map((item) => formatExchangeCode(item.etfCode))
@@ -542,11 +547,11 @@ function formatDateTime(date) {
   );
 }
 
-function generateStockRecord(etf, timeStr) {
+function generateStockRecord(etf, index, timeStr) {
   const totalScore = randomInt(0, 5);
   const trackedEtf = isTrackedEtfCode(etf.etfCode);
   const totalStockCount = trackedEtf
-    ? (Math.max(0, Number(etf.totalStockCount) || 0) || randomInt(20, 60))
+    ? (Math.max(0, Number(etf.totalStockCount) || 0) || DEFAULT_MOCK_TOTAL_STOCK_COUNT + (index < EXTRA_MOCK_TOTAL_STOCK_COUNT ? 1 : 0))
     : null;
   const growthStockCount = trackedEtf ? randomInt(0, totalStockCount) : null;
   const latestPrice = randomFloat(0.8, 8, 3);
@@ -577,7 +582,7 @@ function generateStockRecord(etf, timeStr) {
 function generateAllData() {
   const now = new Date();
   const timeStr = formatDateTime(now);
-  const stockDataList = ETF_LIST.map((etf) => generateStockRecord(etf, timeStr));
+  const stockDataList = ETF_LIST.map((etf, index) => generateStockRecord(etf, index, timeStr));
   return createAllDataResponse(stockDataList, timeStr);
 }
 
@@ -598,7 +603,7 @@ function generateTimeSeriesData(startTimeStr, endTimeStr, page, size) {
   const safePage = Math.max(1, Math.min(page, totalPages));
   const slicedProducts = ETF_LIST.slice((safePage - 1) * size, safePage * size);
 
-  const productRows = slicedProducts.map((etf) => {
+  const productRows = slicedProducts.map((etf, index) => {
     const timeSeriesData = timeColumns.reduce((acc, tp) => {
       acc[tp] = createTimeseriesCell(
         {
@@ -616,8 +621,8 @@ function generateTimeSeriesData(startTimeStr, endTimeStr, page, size) {
           m10_percent: randomFloat(0.02, 0.2),
           m20_percent: randomFloat(0.02, 0.2),
           ma_mean_ratio: randomFloat(0.02, 0.2),
-          growth_stock_count: isTrackedEtfCode(etf.etfCode) ? randomInt(0, 20) : null,
-          total_stock_count: isTrackedEtfCode(etf.etfCode) ? randomInt(20, 80) : null,
+          growth_stock_count: isTrackedEtfCode(etf.etfCode) ? randomInt(0, DEFAULT_MOCK_TOTAL_STOCK_COUNT + (index < EXTRA_MOCK_TOTAL_STOCK_COUNT ? 1 : 0)) : null,
+          total_stock_count: isTrackedEtfCode(etf.etfCode) ? DEFAULT_MOCK_TOTAL_STOCK_COUNT + (index < EXTRA_MOCK_TOTAL_STOCK_COUNT ? 1 : 0) : null,
           close: randomFloat(0.8, 8, 3),
         },
         randomInt(20, 80)

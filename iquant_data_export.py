@@ -7,8 +7,7 @@ import time
 DB_PATH = r"C:\Users\Public\dataview\market_data.db"
 
 # Full stock universe: (code, market, name, sector)
-# 169 securities across 7 sectors: Technology, HK/Foreign, Consumer, Medical, New Energy, Cyclical, Broad-based
-# Deduplicated from board specification (BIT-33 comment b14a3b96)
+# 164 securities across 7 sectors, matching 目标股票池.md and board-approved target pool
 UNIVERSE = [
     # 一、科技行业（含ETF与个股）
     ("588000", "SH", "科创50ETF", "科技行业（含ETF与个股）"),
@@ -30,7 +29,7 @@ UNIVERSE = [
     ("002555", "SZ", "三七互娱", "科技行业（含ETF与个股）"),
     ("300002", "SZ", "神州泰岳", "科技行业（含ETF与个股）"),
     ("002415", "SZ", "海康威视", "科技行业（含ETF与个股）"),
-    ("600986", "SH", "浙文互娱", "科技行业（含ETF与个股）"),
+    ("600986", "SH", "浙文互联", "科技行业（含ETF与个股）"),
     ("300308", "SZ", "中际旭创", "科技行业（含ETF与个股）"),
     ("300502", "SZ", "新易盛", "科技行业（含ETF与个股）"),
     ("603019", "SH", "中科曙光", "科技行业（含ETF与个股）"),
@@ -73,6 +72,9 @@ UNIVERSE = [
     ("300058", "SZ", "蓝色光标", "科技行业（含ETF与个股）"),
     ("300339", "SZ", "润和软件", "科技行业（含ETF与个股）"),
     ("300364", "SZ", "中文在线", "科技行业（含ETF与个股）"),
+    ("600206", "SH", "有研新材", "科技行业（含ETF与个股）"),
+    ("002241", "SZ", "歌尔股份", "科技行业（含ETF与个股）"),
+    ("688568", "SH", "中科星图", "科技行业（含ETF与个股）"),
 
     # 二、香港/国外（含ETF）
     ("513100", "SH", "纳指ETF", "香港/国外（含ETF）"),
@@ -97,6 +99,7 @@ UNIVERSE = [
     ("000596", "SZ", "古井贡酒", "消费行业（含ETF与个股）"),
     ("002304", "SZ", "洋河股份", "消费行业（含ETF与个股）"),
     ("600600", "SH", "青岛啤酒", "消费行业（含ETF与个股）"),
+    ("601689", "SH", "拓普集团", "消费行业（含ETF与个股）"),
 
     # 四、医药基金（含ETF与个股）
     ("512010", "SH", "医药ETF", "医药基金（含ETF与个股）"),
@@ -143,6 +146,12 @@ UNIVERSE = [
     ("600886", "SH", "国投电力", "新能源（含ETF与个股）"),
     ("600732", "SH", "爱旭股份", "新能源（含ETF与个股）"),
     ("002202", "SZ", "金风科技", "新能源（含ETF与个股）"),
+    ("300763", "SZ", "锦浪科技", "新能源（含ETF与个股）"),
+    ("002050", "SZ", "三花智控", "新能源（含ETF与个股）"),
+    ("603799", "SH", "华友钴业", "新能源（含ETF与个股）"),
+    ("002340", "SZ", "格林美", "新能源（含ETF与个股）"),
+    ("300450", "SZ", "先导智能", "新能源（含ETF与个股）"),
+    ("000887", "SZ", "中鼎股份", "新能源（含ETF与个股）"),
 
     # 六、其他周期（含ETF与个股）
     ("512000", "SH", "券商ETF", "其他周期（含ETF与个股）"),
@@ -164,6 +173,10 @@ UNIVERSE = [
     ("601011", "SH", "宝泰隆", "其他周期（含ETF与个股）"),
     ("600580", "SH", "卧龙电驱", "其他周期（含ETF与个股）"),
     ("000831", "SZ", "中国稀土", "其他周期（含ETF与个股）"),
+    ("002600", "SZ", "领益智造", "其他周期（含ETF与个股）"),
+    ("002716", "SZ", "湖南白银", "其他周期（含ETF与个股）"),
+    ("600111", "SH", "北方稀土", "其他周期（含ETF与个股）"),
+    ("603993", "SH", "洛阳钼业", "其他周期（含ETF与个股）"),
 
     # 七、宽基金（仅ETF）
     ("159901", "SZ", "深证100ETF", "宽基金（仅ETF）"),
@@ -196,7 +209,7 @@ TIMEFRAME_CONFIGS = {
 RETENTION_DAYS = 30
 
 ETF_CONSTITUENTS = {
-    '588000.SH': ['588000.SH', '688981.SH', '688041.SH', '688256.SH', '688012.SH', '688111.SH', '688008.SH', '688271.SH', '688036.SH', '688126.SH', '688223.SH', '688396.SH', '688072.SH', '688120.SH', '688599.SH', '688169.SH', '688047.SH', '688777.SH', '689009.SH', '688617.SH', '688303.SH', '688009.SH', '688122.SH', '688099.SH', '688188.SH', '688180.SH', '688525.SH', '688506.SH', '688521.SH', '688385.SH', '688728.SH', '688187.SH', '688065.SH', '688082.SH', '688363.SH', '688249.SH', '688234.SH', '688538.SH', '688114.SH', '688301.SH', '688220.SH', '688561.SH', '688297.SH', '688469.SH', '688472.SH', '688375.SH', '688475.SH', '688563.SH', '688819.SH', '688295.SH'],
+    '588000.SH': ['688981.SH', '688041.SH', '688256.SH', '688012.SH', '688111.SH', '688008.SH', '688271.SH', '688036.SH', '688126.SH', '688223.SH', '688396.SH', '688072.SH', '688120.SH', '688599.SH', '688169.SH', '688047.SH', '688777.SH', '689009.SH', '688617.SH', '688303.SH', '688009.SH', '688122.SH', '688099.SH', '688188.SH', '688180.SH', '688525.SH', '688506.SH', '688521.SH', '688385.SH', '688728.SH', '688187.SH', '688065.SH', '688082.SH', '688363.SH', '688249.SH', '688234.SH', '688538.SH', '688114.SH', '688301.SH', '688220.SH', '688561.SH', '688297.SH', '688469.SH', '688472.SH', '688375.SH', '688475.SH', '688563.SH', '688819.SH', '688295.SH'],
     '515070.SH': ['515070.SH', '159819.SZ', '512930.SH', '515980.SH', '517800.SH', '688256.SH', '300308.SZ', '002415.SZ', '603019.SH', '300502.SZ', '002230.SZ', '603501.SH', '688008.SH', '688111.SH', '000938.SZ', '000977.SZ', '688169.SH', '601360.SH', '300418.SZ', '002920.SZ', '300442.SZ', '002236.SZ', '600536.SH', '300474.SZ', '300496.SZ', '603160.SH', '002281.SZ', '600588.SH', '688099.SH', '300002.SZ', '002405.SZ', '600845.SH', '688608.SH', '300223.SZ', '002261.SZ', '002065.SZ', '300383.SZ', '688521.SH', '600100.SH', '300458.SZ', '688568.SH', '002152.SZ', '600699.SH', '300212.SZ', '300454.SZ', '688385.SH', '002373.SZ', '002439.SZ', '002151.SZ', '603486.SH', '688475.SH', '002368.SZ', '000032.SZ', '301536.SZ'],
     '516630.SH': ['516630.SH', '002230.SZ', '603019.SH', '688111.SH', '000977.SZ', '300339.SZ', '300502.SZ', '600570.SH', '000938.SZ', '300308.SZ', '000066.SZ', '600536.SH', '600588.SH', '300002.SZ', '600845.SH', '002261.SZ', '300017.SZ', '002065.SZ', '300454.SZ', '002410.SZ', '300383.SZ', '688568.SH', '300442.SZ', '002439.SZ', '300253.SZ', '600131.SH', '002368.SZ', '300212.SZ', '300624.SZ', '300168.SZ', '600602.SH', '300525.SZ', '002373.SZ', '600850.SH', '300229.SZ', '600561.SH', '300166.SZ', '002396.SZ', '300075.SZ', '002212.SZ', '300188.SZ', '002335.SZ', '688343.SH', '000555.SZ', '688232.SH', '002153.SZ', '300451.SZ', '600556.SH', '603039.SH', '688066.SH', '603171.SH'],
     '515050.SH': ['515050.SH', '002475.SZ', '300308.SZ', '000063.SZ', '601138.SH', '300502.SZ', '603986.SH', '002241.SZ', '000938.SZ', '002179.SZ', '002463.SZ', '600703.SH', '002384.SZ', '300394.SZ', '000988.SZ', '002920.SZ', '300782.SZ', '300136.SZ', '600845.SH', '002600.SZ', '600183.SH', '300017.SZ', '002938.SZ', '002281.SZ', '002916.SZ', '300413.SZ', '002465.SZ', '300496.SZ', '300383.SZ', '600498.SH', '603083.SH', '300679.SZ', '603236.SH', '601231.SH', '002544.SZ', '603228.SH', '002123.SZ', '002396.SZ', '300638.SZ', '300620.SZ', '603220.SH', '001270.SZ', '688153.SH', '688100.SH', '002815.SZ', '301205.SZ', '688387.SH'],
@@ -251,6 +264,17 @@ ETF_CONSTITUENTS = {
 
 CODE_TO_FULL = dict((code, "{0}.{1}".format(code, mkt)) for code, mkt, _, _ in UNIVERSE)
 ETF_CODES = set(ETF_CONSTITUENTS.keys())
+
+FUND_LIKE_NON_TRACKED_CODES = set()
+for _constituent_list in ETF_CONSTITUENTS.values():
+    for _constituent_code in _constituent_list:
+        if _constituent_code in ETF_CODES:
+            continue
+        if _constituent_code == '03033.HK':
+            FUND_LIKE_NON_TRACKED_CODES.add(_constituent_code)
+            continue
+        if _constituent_code.endswith(('.SH', '.SZ')) and _constituent_code[:1] in ('1', '5'):
+            FUND_LIKE_NON_TRACKED_CODES.add(_constituent_code)
 
 UNRESOLVED_ETF_CONSTITUENTS = {
     '513520.SH': 'No donor-backed constituent basket found in legacy service scripts; breadth remains 0/0 until a verified Nikkei basket is supplied.',
@@ -452,7 +476,11 @@ def _get_constituent_codes(code, mkt):
     constituents = ETF_CONSTITUENTS.get(full_code)
     if not constituents:
         return []
-    return [c for c in constituents if c != full_code]
+    return [
+        constituent_code
+        for constituent_code in constituents
+        if constituent_code != full_code and constituent_code not in FUND_LIKE_NON_TRACKED_CODES
+    ]
 
 
 def _get_constituent_statistics(ContextInfo, code, mkt, tf_config):

@@ -607,8 +607,8 @@ const App = {
         // 更新最后更新时间
         UIRenderer.updateLastUpdateTime(statistics.lastUpdateTime);
 
-        // 更新数据计数 - 使用实际的股票列表长度
-        const dataCount = stockDataList ? stockDataList.length : 0;
+        // 更新数据计数 - 优先使用后端返回的目标股票池数量
+        const dataCount = statistics?.dataCount ?? (stockDataList ? stockDataList.length : 0);
         UIRenderer.updateDataCount(dataCount);
 
         // 准备当前统计数据
