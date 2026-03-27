@@ -2,6 +2,14 @@
 import sqlite3
 import os
 import time
+import json
+
+try:
+    import urllib
+    import urllib2
+except ImportError:
+    import urllib.parse as urllib
+    import urllib.request as urllib2
 
 # SQLite file path (absolute). Must match DB_PATH in server.js.
 DB_PATH = r"C:\Users\Public\dataview\market_data.db"
@@ -207,6 +215,32 @@ TIMEFRAME_CONFIGS = {
 
 # Days of timeseries history to retain
 RETENTION_DAYS = 30
+MA_RISE_THRESHOLD = 0.5
+ETF_HOLD_RATE_THRESHOLD = 1.0
+
+THS_TO_QMT_MARKET = {
+    "17": "SH",
+    "18": "SH",
+    "20": "SH",
+    "33": "SZ",
+    "34": "SZ",
+    "36": "SZ",
+    "151": "BJ",
+    "31": "HK",
+    "48": "US",
+}
+
+THS_STATIC_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Referer": "https://www.10jqka.com.cn/",
+    "Accept": "*/*",
+}
+
+THS_RELATION_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Referer": "https://fund.10jqka.com.cn/",
+    "Accept": "application/json, text/plain, */*",
+}
 
 ETF_CONSTITUENTS = {
     '588000.SH': ['688981.SH', '688041.SH', '688256.SH', '688012.SH', '688111.SH', '688008.SH', '688271.SH', '688036.SH', '688126.SH', '688223.SH', '688396.SH', '688072.SH', '688120.SH', '688599.SH', '688169.SH', '688047.SH', '688777.SH', '689009.SH', '688617.SH', '688303.SH', '688009.SH', '688122.SH', '688099.SH', '688188.SH', '688180.SH', '688525.SH', '688506.SH', '688521.SH', '688385.SH', '688728.SH', '688187.SH', '688065.SH', '688082.SH', '688363.SH', '688249.SH', '688234.SH', '688538.SH', '688114.SH', '688301.SH', '688220.SH', '688561.SH', '688297.SH', '688469.SH', '688472.SH', '688375.SH', '688475.SH', '688563.SH', '688819.SH', '688295.SH'],
@@ -280,9 +314,267 @@ UNRESOLVED_ETF_CONSTITUENTS = {}
 
 BREADTH_ELIGIBLE_ETF_CODES = ETF_CODES - set(UNRESOLVED_ETF_CONSTITUENTS.keys())
 
+_THS_STOCK_INFO_CACHE = {}
+_STOCK_RELATION_CACHE = {}
+
 
 def _get_timeframe_config():
     return TIMEFRAME_CONFIGS.get(TIMEFRAME_MODE, TIMEFRAME_CONFIGS["daily"])
+
+
+def _full_code(code, mkt):
+    return "{0}.{1}".format(code, mkt)
+
+
+def _fetch_json(url, headers=None, timeout=5):
+    try:
+        request = urllib2.Request(url, headers=headers or {})
+        response = urllib2.urlopen(request, timeout=timeout)
+        content = response.read()
+        if not content:
+            return None
+        if not isinstance(content, str):
+            content = content.decode("utf-8")
+        return json.loads(content)
+    except Exception:
+        return None
+
+
+def _query_ths_stock_info(stock_code):
+    pure_code = stock_code.strip().upper().split(".")[0]
+    cache_key = pure_code
+    if cache_key in _THS_STOCK_INFO_CACHE:
+        return _THS_STOCK_INFO_CACHE[cache_key]
+
+    params = urllib.urlencode({"pattern": pure_code})
+    url = "https://dict.hexin.cn:9531/stocks?{0}".format(params)
+
+    try:
+        request = urllib2.Request(url, headers=THS_STATIC_HEADERS)
+        response = urllib2.urlopen(request, timeout=5)
+        content = response.read()
+        if not isinstance(content, str):
+            content = content.decode("utf-8")
+        content = content.strip()
+        if not content or "|" not in content:
+            _THS_STOCK_INFO_CACHE[cache_key] = None
+            return None
+
+        first_line = content.split("\n")[0].strip()
+        parts = first_line.split("|")
+        if len(parts) != 4:
+            _THS_STOCK_INFO_CACHE[cache_key] = None
+            return None
+
+        info = {
+            "code": parts[0],
+            "name": parts[1],
+            "pinyin": parts[2],
+            "market_id": parts[3],
+        }
+        _THS_STOCK_INFO_CACHE[cache_key] = info
+        return info
+    except Exception:
+        _THS_STOCK_INFO_CACHE[cache_key] = None
+        return None
+
+
+def _get_ths_market_id(stock_code):
+    full_code = stock_code.strip().upper()
+    if "." not in full_code:
+        raise ValueError("QMT code format error: {0}".format(stock_code))
+
+    stock_info = _query_ths_stock_info(full_code)
+    if not stock_info or "market_id" not in stock_info:
+        raise ValueError("Unable to resolve market id for {0}".format(stock_code))
+
+    return str(stock_info["market_id"])
+
+
+def _convert_stock_code(stock_code, to_qmt):
+    stock_code = stock_code.strip().upper()
+    if to_qmt:
+        if ":" not in stock_code:
+            raise ValueError("THS code format error: {0}".format(stock_code))
+        ths_market, code = stock_code.split(":", 1)
+        qmt_suffix = THS_TO_QMT_MARKET.get(ths_market)
+        if not qmt_suffix:
+            raise ValueError("Unsupported THS market id: {0}".format(ths_market))
+        return "{0}.{1}".format(code, qmt_suffix)
+
+    market_id = _get_ths_market_id(stock_code)
+    pure_code = stock_code.rsplit(".", 1)[0]
+    return "{0}:{1}".format(market_id, pure_code)
+
+
+def _get_stock_etf_relations(full_code):
+    if full_code in _STOCK_RELATION_CACHE:
+        return _STOCK_RELATION_CACHE[full_code]
+
+    try:
+        target_id = _convert_stock_code(full_code, to_qmt=False)
+    except Exception:
+        _STOCK_RELATION_CACHE[full_code] = []
+        return []
+
+    url = (
+        "https://fund.10jqka.com.cn/quotation/stock/cap_tab/v1/relation/"
+        "{0}/stock_etf_subred/stock_etf_subred_holdrate/desc/30000"
+    ).format(target_id)
+    payload = _fetch_json(url, headers=THS_RELATION_HEADERS, timeout=10) or {}
+    relation_list = payload.get("data", {}).get("relationList", [])
+    if not isinstance(relation_list, list):
+        relation_list = []
+
+    _STOCK_RELATION_CACHE[full_code] = relation_list
+    return relation_list
+
+
+def _get_instrument_total_volume(ContextInfo, full_code):
+    try:
+        detail = ContextInfo.get_instrumentdetail(full_code)
+    except Exception:
+        detail = None
+    if not detail:
+        return 0.0
+    return _safe_float(detail.get("TotalVolume"), 0.0)
+
+
+def _get_batch_market_value(ContextInfo, full_codes, market_value_cache):
+    results = {}
+    missing_codes = [full_code for full_code in full_codes if full_code not in market_value_cache]
+    if missing_codes:
+        try:
+            full_tick = ContextInfo.get_full_tick(missing_codes)
+        except Exception:
+            full_tick = {}
+
+        for full_code in missing_codes:
+            total_volume = _get_instrument_total_volume(ContextInfo, full_code)
+            tick = full_tick.get(full_code, {}) if full_tick else {}
+            last_price = _safe_float(tick.get("lastPrice"), 0.0)
+            market_value_cache[full_code] = total_volume * last_price if total_volume and last_price else 0.0
+
+    for full_code in full_codes:
+        results[full_code] = market_value_cache.get(full_code, 0.0)
+    return results
+
+
+def _get_etf_ratio_metrics(ContextInfo, etf_code, tf_config, etf_metric_cache):
+    if etf_code in etf_metric_cache:
+        return etf_metric_cache[etf_code]
+
+    quote = _get_quote(ContextInfo, etf_code, tf_config)
+    if not quote:
+        metrics = {
+            "m5_price_ratio": 0.0,
+            "m10_price_ratio": 0.0,
+            "m20_price_ratio": 0.0,
+            "ma_change_ratio": 0.0,
+        }
+        etf_metric_cache[etf_code] = metrics
+        return metrics
+
+    current_price = quote["current_price"]
+    tick = quote["tick"]
+    line_snapshot = _get_line_snapshot(ContextInfo, etf_code, current_price, tick, tf_config)
+
+    def _price_ratio(ma_value):
+        if not ma_value:
+            return 0.0
+        return round(current_price / ma_value - 1, 4)
+
+    compare_price = line_snapshot["m0"]
+    ma_change_ratio = 0.0
+    if compare_price:
+        ma_change_ratio = round(current_price / compare_price - 1, 4)
+
+    metrics = {
+        "m5_price_ratio": _price_ratio(line_snapshot["m5"]),
+        "m10_price_ratio": _price_ratio(line_snapshot["m10"]),
+        "m20_price_ratio": _price_ratio(line_snapshot["m20"]),
+        "ma_change_ratio": ma_change_ratio,
+    }
+    etf_metric_cache[etf_code] = metrics
+    return metrics
+
+
+def _get_stock_etf_hold_rates(full_code):
+    relation_list = _get_stock_etf_relations(full_code)
+    etf_hold_rates = {}
+    for item in relation_list:
+        try:
+            hold_rate = float(item.get("indicMap", {}).get("stock_etf_subred_holdrate", 0))
+        except Exception:
+            continue
+        if hold_rate <= ETF_HOLD_RATE_THRESHOLD:
+            continue
+        try:
+            etf_code = _convert_stock_code(item.get("code", ""), to_qmt=True)
+        except Exception:
+            continue
+        etf_hold_rates[etf_code] = hold_rate
+    return etf_hold_rates
+
+
+def _calculate_weighted_stock_metrics(ContextInfo, full_code, tf_config, market_value_cache, etf_metric_cache):
+    etf_hold_rates = _get_stock_etf_hold_rates(full_code)
+    if not etf_hold_rates:
+        return {
+            "m0_percent": 0.0,
+            "m5_percent": 0.0,
+            "m10_percent": 0.0,
+            "m20_percent": 0.0,
+            "ma_mean_ratio": 0.0,
+        }
+
+    etf_market_values = _get_batch_market_value(ContextInfo, list(etf_hold_rates.keys()), market_value_cache)
+    total_amount = 0.0
+    weighted_amounts = {}
+
+    for etf_code, hold_rate in etf_hold_rates.items():
+        market_amount = etf_market_values.get(etf_code, 0.0) * hold_rate / 100.0
+        if market_amount <= 0:
+            continue
+        weighted_amounts[etf_code] = market_amount
+        total_amount += market_amount
+
+    if total_amount <= 0:
+        return {
+            "m0_percent": 0.0,
+            "m5_percent": 0.0,
+            "m10_percent": 0.0,
+            "m20_percent": 0.0,
+            "ma_mean_ratio": 0.0,
+        }
+
+    weighted_m0 = 0.0
+    weighted_m5 = 0.0
+    weighted_m10 = 0.0
+    weighted_m20 = 0.0
+
+    for etf_code, market_amount in weighted_amounts.items():
+        weight = market_amount / total_amount
+        etf_metrics = _get_etf_ratio_metrics(ContextInfo, etf_code, tf_config, etf_metric_cache)
+        weighted_m5 += weight * etf_metrics.get("m5_price_ratio", 0.0)
+        weighted_m10 += weight * etf_metrics.get("m10_price_ratio", 0.0)
+        weighted_m20 += weight * etf_metrics.get("m20_price_ratio", 0.0)
+        weighted_m0 += weight * etf_metrics.get("ma_change_ratio", 0.0)
+
+    m0_percent = round(weighted_m0, 4)
+    m5_percent = round(weighted_m5, 4)
+    m10_percent = round(weighted_m10, 4)
+    m20_percent = round(weighted_m20, 4)
+
+    return {
+        "m0_percent": m0_percent,
+        "m5_percent": m5_percent,
+        "m10_percent": m10_percent,
+        "m20_percent": m20_percent,
+        "ma_mean_ratio": round((m0_percent + m5_percent + m10_percent + m20_percent) / 4.0, 4),
+    }
+
+
 
 def _ensure_db(db_path):
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
@@ -438,18 +730,72 @@ def _get_etf_line_values(ContextInfo, full_code, current_price, tf_config):
     return ma_values
 
 
-def _total_score(row):
-    score = 0
-    threshold = 0.5
+def _get_quote(ContextInfo, full_code, tf_config):
+    try:
+        full_tick = ContextInfo.get_full_tick([full_code])
+    except Exception:
+        full_tick = {}
 
-    if row.get("m5_percent", 0.0) >= threshold:
-        score += 1
-    if row.get("m10_percent", 0.0) >= threshold:
-        score += 1
-    if row.get("m20_percent", 0.0) >= threshold:
-        score += 1
-    if row.get("ma_mean_ratio", 0.0) >= threshold:
-        score += 1
+    tick = full_tick.get(full_code)
+    if tick and tick.get("lastPrice") is not None:
+        return {
+            "tick": tick,
+            "current_price": _safe_float(tick.get("lastPrice")),
+            "last_close": _safe_float(tick.get("lastClose")),
+        }
+
+    closes = _get_history_closes(ContextInfo, full_code, tf_config["period"], max(tf_config["ma_windows"]))
+    if not closes:
+        return None
+
+    current_price = closes[-1]
+    last_close = closes[-2] if len(closes) > 1 else current_price
+    return {
+        "tick": {"lastPrice": current_price, "lastClose": last_close},
+        "current_price": current_price,
+        "last_close": last_close,
+    }
+
+
+def _get_line_snapshot(ContextInfo, full_code, current_price, tick, tf_config):
+    ma_values = _get_etf_line_values(ContextInfo, full_code, current_price, tf_config)
+    compare_price = _get_lookback_price(ContextInfo, full_code, tick, tf_config.get("m0_lookback_minutes", 0))
+    m5 = ma_values.get(5, 0.0)
+    m10 = ma_values.get(10, 0.0)
+    m20 = ma_values.get(20, 0.0)
+    return {
+        "m5": m5,
+        "m10": m10,
+        "m20": m20,
+        "m0": compare_price,
+        "greater_m5": bool(m5 and current_price > m5),
+        "greater_m10": bool(m10 and current_price > m10),
+        "greater_m20": bool(m20 and current_price > m20),
+        "greater_m0": bool(compare_price and current_price > compare_price),
+    }
+
+
+def _calculate_total_score(row, is_etf):
+    score = 0
+
+    if is_etf:
+        if row.get("m5_percent") is not None and row.get("m5_percent") >= MA_RISE_THRESHOLD:
+            score += 1
+        if row.get("m10_percent") is not None and row.get("m10_percent") >= MA_RISE_THRESHOLD:
+            score += 1
+        if row.get("m20_percent") is not None and row.get("m20_percent") >= MA_RISE_THRESHOLD:
+            score += 1
+        if row.get("ma_mean_ratio") is not None and row.get("ma_mean_ratio") >= MA_RISE_THRESHOLD:
+            score += 1
+    else:
+        if row.get("m5_percent") is not None and row.get("m5_percent") > 0:
+            score += 1
+        if row.get("m10_percent") is not None and row.get("m10_percent") > 0:
+            score += 1
+        if row.get("m20_percent") is not None and row.get("m20_percent") > 0:
+            score += 1
+        if row.get("ma_mean_ratio") is not None and row.get("ma_mean_ratio") > 0:
+            score += 1
 
     if row["greater_m5"]:
         score += 1
@@ -551,11 +897,13 @@ def _get_constituent_ma_statistics(ContextInfo, code, mkt, tf_config):
                 "percents": dict((window, None) for window in label_windows),
                 "fixed_total_count": None,
                 "valid_sample_count": None,
+                "rise_counts": dict((window, None) for window in label_windows),
             }
         return {
             "percents": dict((window, 0.0) for window in label_windows),
             "fixed_total_count": 0,
             "valid_sample_count": 0,
+            "rise_counts": dict((window, 0) for window in label_windows),
         }
 
     try:
@@ -604,7 +952,94 @@ def _get_constituent_ma_statistics(ContextInfo, code, mkt, tf_config):
         "percents": percents,
         "fixed_total_count": fixed_total_count,
         "valid_sample_count": valid_sample_count,
+        "rise_counts": rise_counts,
     }
+
+
+def _build_base_row(code, name, industry, current_price, line_snapshot, now_str):
+    return {
+        "etf_code": code,
+        "etf_name": name,
+        "industry": industry,
+        "close": current_price,
+        "m5": line_snapshot["m5"],
+        "m10": line_snapshot["m10"],
+        "m20": line_snapshot["m20"],
+        "m0": line_snapshot["m0"],
+        "greater_m5": int(line_snapshot["greater_m5"]),
+        "greater_m10": int(line_snapshot["greater_m10"]),
+        "greater_m20": int(line_snapshot["greater_m20"]),
+        "greater_m0": int(line_snapshot["greater_m0"]),
+        "hold_status": int(line_snapshot["greater_m5"] and line_snapshot["greater_m10"]),
+        "create_time": now_str,
+    }
+
+
+def _build_etf_row(ContextInfo, code, mkt, name, industry, quote, tf_config, now_str):
+    current_price = quote["current_price"]
+    line_snapshot = _get_line_snapshot(ContextInfo, _full_code(code, mkt), current_price, quote["tick"], tf_config)
+    constituent_stats = _get_constituent_statistics(ContextInfo, code, mkt, tf_config)
+    ma_stats = _get_constituent_ma_statistics(ContextInfo, code, mkt, tf_config)
+
+    rise_count = constituent_stats["rise_count"]
+    total_count = constituent_stats["fixed_total_count"]
+    valid_stock_count = constituent_stats["valid_sample_count"]
+    ma_percents = ma_stats["percents"]
+    rise_counts = ma_stats["rise_counts"]
+
+    m5_pct = ma_percents.get(5)
+    m10_pct = ma_percents.get(10)
+    m20_pct = ma_percents.get(20)
+    m0_pct = round(rise_count / total_count, 4) if total_count else (0.0 if total_count == 0 else None)
+    ma_mean_ratio = (
+        round((m5_pct + m10_pct + m20_pct) / 3.0, 4)
+        if total_count is not None and None not in (m5_pct, m10_pct, m20_pct)
+        else None
+    )
+
+    row = _build_base_row(code, name, industry, current_price, line_snapshot, now_str)
+    row.update({
+        "m0_percent": m0_pct,
+        "m5_percent": m5_pct,
+        "m10_percent": m10_pct,
+        "m20_percent": m20_pct,
+        "ma_mean_ratio": ma_mean_ratio,
+        "growth_stock_count": rise_counts.get(5),
+        "total_stock_count": total_count,
+        "valid_stock_count": valid_stock_count,
+    })
+    row["total_score"] = _calculate_total_score(row, True)
+    row["buy_sell_signal"] = _buy_sell_signal(row["total_score"])
+    return row
+
+
+def _build_stock_row(ContextInfo, code, mkt, name, industry, quote, tf_config, now_str, market_value_cache, etf_metric_cache):
+    full_code = _full_code(code, mkt)
+    current_price = quote["current_price"]
+    line_snapshot = _get_line_snapshot(ContextInfo, full_code, current_price, quote["tick"], tf_config)
+    weighted_metrics = _calculate_weighted_stock_metrics(
+        ContextInfo,
+        full_code,
+        tf_config,
+        market_value_cache,
+        etf_metric_cache,
+    )
+
+    row = _build_base_row(code, name, industry, current_price, line_snapshot, now_str)
+    row.update({
+        # ETF 的 *_percent 是 breadth，占比；个股这里是关联 ETF 市值加权 ratio。
+        "m0_percent": weighted_metrics["m0_percent"],
+        "m5_percent": weighted_metrics["m5_percent"],
+        "m10_percent": weighted_metrics["m10_percent"],
+        "m20_percent": weighted_metrics["m20_percent"],
+        "ma_mean_ratio": weighted_metrics["ma_mean_ratio"],
+        "growth_stock_count": None,
+        "total_stock_count": None,
+        "valid_stock_count": None,
+    })
+    row["total_score"] = _calculate_total_score(row, False)
+    row["buy_sell_signal"] = _buy_sell_signal(row["total_score"])
+    return row
 
 
 def init(ContextInfo):
@@ -625,93 +1060,32 @@ def handlebar(ContextInfo):
     tf_config = _get_timeframe_config()
 
     rows = []
+    market_value_cache = {}
+    etf_metric_cache = {}
 
     for code, mkt, name, industry in UNIVERSE:
-        full_code = "{0}.{1}".format(code, mkt)
+        full_code = _full_code(code, mkt)
 
         try:
-            try:
-                full_tick = ContextInfo.get_full_tick([full_code])
-            except Exception:
-                full_tick = {}
-
-            etf_tick = full_tick.get(full_code)
-            if etf_tick and etf_tick.get("lastPrice") is not None:
-                current_close = _safe_float(etf_tick.get("lastPrice"))
-                last_close = _safe_float(etf_tick.get("lastClose"))
-            else:
-                closes = _get_history_closes(ContextInfo, full_code, tf_config["period"], max(tf_config["ma_windows"]))
-                if not closes:
-                    continue
-                current_close = closes[-1]
-                last_close = closes[-2] if len(closes) > 1 else current_close
-                etf_tick = {"lastPrice": current_close, "lastClose": last_close}
-
-            ma_values = _get_etf_line_values(ContextInfo, full_code, current_close, tf_config)
-            m5 = ma_values.get(5, 0.0)
-            m10 = ma_values.get(10, 0.0)
-            m20 = ma_values.get(20, 0.0)
-            compare_price = _get_lookback_price(ContextInfo, full_code, etf_tick, tf_config.get("m0_lookback_minutes", 0))
-
-            greater_m5 = current_close > m5 if m5 else False
-            greater_m10 = current_close > m10 if m10 else False
-            greater_m20 = current_close > m20 if m20 else False
-            greater_m0 = current_close > compare_price if compare_price else False
+            quote = _get_quote(ContextInfo, full_code, tf_config)
+            if not quote:
+                continue
 
             if full_code in ETF_CODES:
-                constituent_stats = _get_constituent_statistics(ContextInfo, code, mkt, tf_config)
-                ma_stats = _get_constituent_ma_statistics(ContextInfo, code, mkt, tf_config)
-
-                rise_count = constituent_stats["rise_count"]
-                total_count = constituent_stats["fixed_total_count"]
-                valid_stock_count = constituent_stats["valid_sample_count"]
-                ma_percents = ma_stats["percents"]
-
-                m5_pct = ma_percents.get(5)
-                m10_pct = ma_percents.get(10)
-                m20_pct = ma_percents.get(20)
-                m0_pct = round(rise_count / total_count, 4) if total_count else (0.0 if total_count == 0 else None)
-                ma_mean_ratio = (
-                    round((m5_pct + m10_pct + m20_pct) / 3, 4)
-                    if total_count is not None and None not in (m5_pct, m10_pct, m20_pct)
-                    else None
-                )
+                row = _build_etf_row(ContextInfo, code, mkt, name, industry, quote, tf_config, now_str)
             else:
-                rise_count = None
-                total_count = None
-                valid_stock_count = None
-                m0_pct = 1.0 if greater_m0 else 0.0
-                m5_pct = 1.0 if greater_m5 else 0.0
-                m10_pct = 1.0 if greater_m10 else 0.0
-                m20_pct = 1.0 if greater_m20 else 0.0
-                ma_mean_ratio = round((m5_pct + m10_pct + m20_pct) / 3.0, 4)
-
-            row = {
-                "etf_code":    code,
-                "etf_name":    name,
-                "industry":    industry,
-                "close":       current_close,
-                "m5":          m5,
-                "m10":         m10,
-                "m20":         m20,
-                "m0":          compare_price,
-                "greater_m5":  int(greater_m5),
-                "greater_m10": int(greater_m10),
-                "greater_m20": int(greater_m20),
-                "greater_m0":  int(greater_m0),
-                "hold_status": int(greater_m5 and greater_m10),
-                "m0_percent":  m0_pct,
-                "m5_percent":  m5_pct,
-                "m10_percent": m10_pct,
-                "m20_percent": m20_pct,
-                "ma_mean_ratio": ma_mean_ratio,
-                "growth_stock_count": rise_count,
-                "total_stock_count":  total_count,
-                "valid_stock_count": valid_stock_count,
-                "create_time": now_str,
-            }
-            row["total_score"] = _total_score(row)
-            row["buy_sell_signal"] = _buy_sell_signal(row["total_score"])
+                row = _build_stock_row(
+                    ContextInfo,
+                    code,
+                    mkt,
+                    name,
+                    industry,
+                    quote,
+                    tf_config,
+                    now_str,
+                    market_value_cache,
+                    etf_metric_cache,
+                )
             rows.append(row)
 
         except Exception as e:
