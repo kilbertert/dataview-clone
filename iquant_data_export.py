@@ -571,7 +571,7 @@ def _calculate_weighted_stock_metrics(ContextInfo, full_code, tf_config, market_
         "m5_percent": m5_percent,
         "m10_percent": m10_percent,
         "m20_percent": m20_percent,
-        "ma_mean_ratio": round((m0_percent + m5_percent + m10_percent + m20_percent) / 4.0, 4),
+        "ma_mean_ratio": round((m5_percent + m10_percent + m20_percent) / 3.0, 4),
     }
 
 
@@ -778,24 +778,14 @@ def _get_line_snapshot(ContextInfo, full_code, current_price, tick, tf_config):
 def _calculate_total_score(row, is_etf):
     score = 0
 
-    if is_etf:
-        if row.get("m5_percent") is not None and row.get("m5_percent") >= MA_RISE_THRESHOLD:
-            score += 1
-        if row.get("m10_percent") is not None and row.get("m10_percent") >= MA_RISE_THRESHOLD:
-            score += 1
-        if row.get("m20_percent") is not None and row.get("m20_percent") >= MA_RISE_THRESHOLD:
-            score += 1
-        if row.get("ma_mean_ratio") is not None and row.get("ma_mean_ratio") >= MA_RISE_THRESHOLD:
-            score += 1
-    else:
-        if row.get("m5_percent") is not None and row.get("m5_percent") > 0:
-            score += 1
-        if row.get("m10_percent") is not None and row.get("m10_percent") > 0:
-            score += 1
-        if row.get("m20_percent") is not None and row.get("m20_percent") > 0:
-            score += 1
-        if row.get("ma_mean_ratio") is not None and row.get("ma_mean_ratio") > 0:
-            score += 1
+    if row.get("m5_percent") is not None and row.get("m5_percent") > MA_RISE_THRESHOLD:
+        score += 1
+    if row.get("m10_percent") is not None and row.get("m10_percent") > MA_RISE_THRESHOLD:
+        score += 1
+    if row.get("m20_percent") is not None and row.get("m20_percent") > MA_RISE_THRESHOLD:
+        score += 1
+    if row.get("ma_mean_ratio") is not None and row.get("ma_mean_ratio") > MA_RISE_THRESHOLD:
+        score += 1
 
     if row["greater_m5"]:
         score += 1
@@ -1028,6 +1018,7 @@ def _build_stock_row(ContextInfo, code, mkt, name, industry, quote, tf_config, n
     row = _build_base_row(code, name, industry, current_price, line_snapshot, now_str)
     row.update({
         # ETF 的 *_percent 是 breadth，占比；个股这里是关联 ETF 市值加权 ratio。
+        # 当前站点展示口径下，个股 ma_mean_ratio 仍按 m5/m10/m20 三项均值计算。
         "m0_percent": weighted_metrics["m0_percent"],
         "m5_percent": weighted_metrics["m5_percent"],
         "m10_percent": weighted_metrics["m10_percent"],
